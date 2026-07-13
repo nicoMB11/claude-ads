@@ -97,6 +97,22 @@ mots de passe admin (nouveaux mots de passe écrits **uniquement** dans
 reporte `DB_PASSWORD` dans wp-config si tu passes `--db-password`. Le changement
 MySQL lui-même se fait dans le Manager Infomaniak.
 
+**3ter. Mises à jour des composants (tâche 3) — le vecteur d'intrusion n°1 :**
+
+```bash
+python3 mb_remediation.py update --site=aude-pompes-funebres.fr             # dry-run : liste from→to
+python3 mb_remediation.py update --site=aude-pompes-funebres.fr --execute   # extensions
+python3 mb_remediation.py update --site=X --themes --core --execute         # + thèmes + cœur
+python3 mb_remediation.py update --site=X --skip=elementor --execute        # exclure une extension fragile
+python3 mb_remediation.py update --site=X --only=site-kit --execute         # une seule
+```
+
+Un site à la fois, **snapshot vérifié obligatoire**. Capture les versions
+avant/après, met à jour élément par élément, puis **teste la santé du site**
+(HTTP + `wp core is-installed`). Si le site répond mal après coup, l'outil te
+donne les commandes `diff` / `restore` pour réparer chirurgicalement. Rapport
+dans `mb-out/<site>.update.json`.
+
 **4. Vérifier que rien ne repousse (après 48 h) :**
 
 ```bash
@@ -124,6 +140,7 @@ SSH oubliée) → retour Phase 0.
 | `report` | Checklist **Annexe A** par site (Markdown + JSON). | non |
 | `clean` | Suppression des artefacts connus. **`--dry-run` par défaut**, `--execute` explicite, `--site` obligatoire, **refuse sans snapshot vérifié**. | **oui** |
 | `rotate` | Phase 2.3 : régénère les salts, réinitialise les mots de passe admin (écrits en local, jamais loggés), reporte `DB_PASSWORD`. `--dry-run` par défaut, **refuse sans snapshot vérifié**. | **oui** |
+| `update` | Tâche 3 : met à jour extensions/thèmes/cœur, un site à la fois, capture avant/après + test de santé HTTP. `--dry-run` par défaut, **refuse sans snapshot vérifié**. | **oui** |
 
 ## Garde-fous (non contournables)
 

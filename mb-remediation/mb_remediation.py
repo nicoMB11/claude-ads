@@ -949,6 +949,138 @@ def module_rotate(ssh: SSH, site: Site, store: SnapshotStore, log: IncidentLog,
 
 
 # --------------------------------------------------------------------------- #
+# Mise à jour des composants (tâche 3) — GARDÉ                                   #
+# --------------------------------------------------------------------------- #
+
+def _http_status(ssh: SSH, url: str) -> str:
+    if not url:
+        return "?"
+    rc, out, _ = ssh.run(
+        f"curl -s -o /dev/null -w '%{{http_code}}' -L --max-time 25 {shlex.quote(url)} 2>/dev/null")
+    return out.strip() or "?"
+
+
+def module_update(ssh: SSH, site: Site, store: SnapshotStore, log: IncidentLog,
+                  out_dir: Path, execute: bool, components: list[str],
+                  only: list[str], skip: list[str]) -> None:
+    """Met à jour extensions (+ thèmes/cœur si demandé), site par site, avec
+    snapshot vérifié obligatoire et test de santé après coup."""
+    # GARDE-FOU : snapshot vérifié requis (une màj peut casser le site).
+    verified = store.latest_verified_backup(site.name)
+    if verified is None:
+        human(f"  🔴 {site.name} : aucun snapshot vérifié. `update` refuse.\n"
+              f"     Lance d'abord : backup --site={site.name} --status=INFECTE --execute", "err")
+        log.write("update_refused", site=site.name, reason="no_verified_backup")
+        return
+    human(f"  filet OK (snapshot vérifié : {verified.name})", "step")
+
+    # --- inventaire des mises à jour disponibles ---
+    plugins = _json_wp(ssh, site,
+                       "plugin list --fields=name,status,version,update,update_version") or []
+    upd_plugins = [p for p in plugins if p.get("update") == "available"]
+    if only:
+        upd_plugins = [p for p in upd_plugins if p["name"] in only]
+    if skip:
+        upd_plugins = [p for p in upd_plugins if p["name"] not in skip]
+
+    upd_themes = []
+    if "themes" in components:
+        themes = _json_wp(ssh, site,
+                          "theme list --fields=name,status,version,update,update_version") or []
+        upd_themes = [t for t in themes if t.get("update") == "available"]
+
+    core_updates = []
+    if "core" in components:
+        rc, out, _ = ssh.wp(site, "core check-update --format=json")
+        try:
+            core_updates = json.loads(out) if out.strip() else []
+        except json.JSONDecodeError:
+            core_updates = []
+
+    total = len(upd_plugins) + len(upd_themes) + len(core_updates)
+    if total == 0:
+        human(f"  ✓ {site.name} : rien à mettre à jour ({'plugins' if 'plugins' in components else ''}"
+              f"{'+thèmes' if 'themes' in components else ''}{'+cœur' if 'core' in components else ''}).", "ok")
+        return
+
+    human(f"  {len(upd_plugins)} extension(s), {len(upd_themes)} thème(s), "
+          f"{len(core_updates)} cœur à mettre à jour :", "warn")
+    for p in upd_plugins:
+        human(f"    plugin {p['name']} : {p['version']} → {p.get('update_version','?')}")
+    for t in upd_themes:
+        human(f"    theme  {t['name']} : {t['version']} → {t.get('update_version','?')}")
+    for c in core_updates:
+        human(f"    core   → {c.get('version','?')}")
+
+    if not execute:
+        human("  [dry-run] rien mis à jour. Ajoute --execute pour agir.", "warn")
+        log.write("update_dryrun", site=site.name,
+                  plugins=[p["name"] for p in upd_plugins],
+                  themes=[t["name"] for t in upd_themes], core=len(core_updates))
+        return
+
+    # --- santé AVANT ---
+    home = ssh.wp(site, "option get home")[1].strip()
+    status_before = _http_status(ssh, home)
+    human(f"  santé avant : HTTP {status_before} ({home})", "step")
+
+    results = {"site": site.name, "generated": now_utc().isoformat(),
+               "home": home, "status_before": status_before,
+               "backup": verified.name, "plugins": [], "themes": [], "core": []}
+
+    # --- exécution, un composant à la fois (capture par élément) ---
+    for p in upd_plugins:
+        rc, out, err = ssh.wp(site, f"plugin update {shlex.quote(p['name'])}")
+        ok = rc == 0
+        human(f"    {'✓' if ok else '✗'} plugin {p['name']} "
+              f"→ {p.get('update_version','?')}", "ok" if ok else "err")
+        results["plugins"].append({"name": p["name"], "from": p["version"],
+                                   "to": p.get("update_version"), "ok": ok, "err": err.strip()})
+        log.write("update_plugin", site=site.name, name=p["name"], ok=ok, err=err.strip())
+
+    for t in upd_themes:
+        rc, out, err = ssh.wp(site, f"theme update {shlex.quote(t['name'])}")
+        ok = rc == 0
+        human(f"    {'✓' if ok else '✗'} theme {t['name']}", "ok" if ok else "err")
+        results["themes"].append({"name": t["name"], "from": t["version"],
+                                  "to": t.get("update_version"), "ok": ok, "err": err.strip()})
+        log.write("update_theme", site=site.name, name=t["name"], ok=ok, err=err.strip())
+
+    if core_updates:
+        rc, out, err = ssh.wp(site, "core update")
+        ok = rc == 0
+        human(f"    {'✓' if ok else '✗'} cœur WordPress", "ok" if ok else "err")
+        results["core"].append({"ok": ok, "err": err.strip()})
+        log.write("update_core", site=site.name, ok=ok, err=err.strip())
+        if ok:
+            ssh.wp(site, "core update-db")  # migration de schéma si nécessaire
+
+    # --- santé APRÈS ---
+    installed = ssh.wp(site, "core is-installed")[0] == 0
+    status_after = _http_status(ssh, home)
+    results["status_after"] = status_after
+    results["core_is_installed"] = installed
+    healthy = installed and status_after in ("200", "301", "302", "308")
+    results["healthy"] = healthy
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / f"{site.name}.update.json").write_text(
+        json.dumps(results, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    if healthy:
+        human(f"  ✓ {site.name} : santé après HTTP {status_after}, WP OK. "
+              f"Vérifie visuellement le site.", "ok")
+    else:
+        human(f"  🔴 {site.name} : santé après HTTP {status_after}, "
+              f"core_is_installed={installed}. Site possiblement CASSÉ.\n"
+              f"     Compare puis restaure ce qu'il faut :\n"
+              f"       diff --site={site.name} --snapshot={verified.name}\n"
+              f"       restore --snapshot={verified.name} --file=<chemin>", "err")
+    log.write("update_health", site=site.name, status_before=status_before,
+              status_after=status_after, healthy=healthy)
+
+
+# --------------------------------------------------------------------------- #
 # Restore (module 0)                                                             #
 # --------------------------------------------------------------------------- #
 
@@ -1125,6 +1257,17 @@ def build_parser() -> argparse.ArgumentParser:
     add_site_selectors(sp, destructive=True)
     sp.add_argument("--execute", action="store_true", help="Supprime réellement (sinon dry-run)")
 
+    sp = sub.add_parser("update", help="Tâche 3 : met à jour extensions/thèmes/cœur. Gardé par backup, un site à la fois.")
+    sp.add_argument("--site", action="append", default=[],
+                    help="Nom de site (répétable). OBLIGATOIRE.")
+    sp.add_argument("--themes", action="store_true", help="Inclure les thèmes")
+    sp.add_argument("--core", action="store_true", help="Inclure le cœur WordPress")
+    sp.add_argument("--only", action="append", default=[],
+                    help="Ne mettre à jour que ces extensions (répétable)")
+    sp.add_argument("--skip", action="append", default=[],
+                    help="Exclure ces extensions (répétable)")
+    sp.add_argument("--execute", action="store_true", help="Agit réellement (sinon dry-run)")
+
     sp = sub.add_parser("rotate", help="Phase 2.3 : salts + mots de passe admin (+ DB). Gardé par backup.")
     sp.add_argument("--site", action="append", default=[], help="Nom de site (répétable)")
     sp.add_argument("--all", action="store_true", help="Tous les sites")
@@ -1164,6 +1307,8 @@ def main(argv: Optional[list[str]] = None) -> int:
             sys.exit("🔴 `clean --all` interdit. Un site à la fois (--site=<nom>).")
         if not args.site:
             sys.exit("🔴 `clean` exige --site=<nom> (jamais les 25 d'un coup).")
+    if args.command == "update" and not args.site:
+        sys.exit("🔴 `update` exige --site=<nom> (un site à la fois, pas de masse).")
     if args.command in READ_ONLY or args.command in ("backup", "rotate"):
         if not cfg.select(args.site, getattr(args, "all", False)):
             sys.exit("Précise --site=<nom> (répétable) ou --all.")
@@ -1243,6 +1388,16 @@ def main(argv: Optional[list[str]] = None) -> int:
                 human(f"[rotate] {site.name} ({'EXECUTE' if args.execute else 'dry-run'})", "step")
                 module_rotate(ssh, site, store, log, out_dir,
                               execute=args.execute, db_password=args.db_password)
+            return 0
+
+        if args.command == "update":
+            components = ["plugins"] + (["themes"] if args.themes else []) + \
+                         (["core"] if args.core else [])
+            sites = cfg.select(args.site, False)
+            for site in sites:
+                human(f"[update] {site.name} ({'EXECUTE' if args.execute else 'dry-run'})", "step")
+                module_update(ssh, site, store, log, out_dir, execute=args.execute,
+                              components=components, only=args.only, skip=args.skip)
             return 0
 
     return 0
