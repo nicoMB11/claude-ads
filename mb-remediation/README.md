@@ -53,6 +53,21 @@ python3 mb_remediation.py clean --site=poeles-cheminees.com --execute  # agit
 
 `clean` **refuse de démarrer** s'il n'existe pas de snapshot vérifié pour le site.
 
+**3bis. Rotation des secrets (Phase 2.3) — après nettoyage, gardé par backup :**
+
+```bash
+python3 mb_remediation.py rotate --site=poeles-cheminees.com            # dry-run
+python3 mb_remediation.py rotate --site=poeles-cheminees.com --execute  # salts + mdp admin
+# après avoir changé le mot de passe MySQL dans le Manager Infomaniak :
+python3 mb_remediation.py rotate --site=poeles-cheminees.com --execute --db-password='NOUVEAU'
+```
+
+`rotate` régénère les 8 salts (déconnecte toutes les sessions), réinitialise les
+mots de passe admin (nouveaux mots de passe écrits **uniquement** dans
+`mb-out/<site>.new-credentials.txt`, chmod 600, **jamais dans le log**), et
+reporte `DB_PASSWORD` dans wp-config si tu passes `--db-password`. Le changement
+MySQL lui-même se fait dans le Manager Infomaniak.
+
 **4. Vérifier que rien ne repousse (après 48 h) :**
 
 ```bash
@@ -77,6 +92,7 @@ SSH oubliée) → retour Phase 0.
 | `persistence` | mu-plugins, cron, comptes + **trous d'ID**, Application Passwords, options autoloaded, `.htaccess`, `functions.php`. | non |
 | `report` | Checklist **Annexe A** par site (Markdown + JSON). | non |
 | `clean` | Suppression des artefacts connus. **`--dry-run` par défaut**, `--execute` explicite, `--site` obligatoire, **refuse sans snapshot vérifié**. | **oui** |
+| `rotate` | Phase 2.3 : régénère les salts, réinitialise les mots de passe admin (écrits en local, jamais loggés), reporte `DB_PASSWORD`. `--dry-run` par défaut, **refuse sans snapshot vérifié**. | **oui** |
 
 ## Garde-fous (non contournables)
 

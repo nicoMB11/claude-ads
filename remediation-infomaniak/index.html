@@ -163,6 +163,21 @@
   .cat-card .v { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 2px; }
   .cat-card .v small { font-size: 12.5px; color: var(--muted); font-weight: 400; }
 
+  .import-bar {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    background: var(--panel); border: 1px dashed var(--border);
+    border-radius: var(--radius); padding: 10px 14px; margin-bottom: 16px;
+  }
+  .import-btn {
+    display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+    background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 7px 12px; font-size: 13px; color: var(--text);
+  }
+  .import-btn:hover { border-color: var(--accent); }
+  .import-hint { color: var(--muted); font-size: 12px; }
+  .import-hint.ok { color: var(--ok); }
+  .import-hint.err { color: var(--danger); }
+
   .site {
     background: var(--panel); border: 1px solid var(--border);
     border-radius: var(--radius); margin-bottom: 10px; overflow: hidden;
@@ -276,6 +291,13 @@
   <!-- ===== VUE PAR SITE ===== -->
   <section id="viewSites" class="hidden">
     <div class="cat-summary" id="catSummary"></div>
+    <div class="import-bar">
+      <label class="import-btn">
+        Importer un rapport <code>mb-remediation</code> (JSON)
+        <input type="file" id="importReport" accept="application/json,.json" multiple hidden>
+      </label>
+      <span class="import-hint" id="importHint">Charge <code>mb-out/&lt;site&gt;.report.json</code> ou <code>_report.all.json</code> → coche l'Annexe A automatiquement.</span>
+    </div>
     <p class="lead">Statut de chaque site. « Aucun artefact détecté » ≠ « sain » : chaque site conservé
       doit passer l'<strong>Annexe A</strong> (dépliable ci-dessous) avant de repasser « En ligne ».
       ⭐ = priorité (poeles-cheminees, prod.baycake).</p>
@@ -505,6 +527,14 @@ const STATUSES = [
   { v: "verified", label: "Vérifié — Annexe A verte", cls: "st-verified" },
   { v: "online", label: "Remis en ligne", cls: "st-online" },
   { v: "deleted", label: "Supprimé", cls: "st-deleted" },
+];
+// Clés dans le MÊME ordre que ANNEXE_A ci-dessous et que le champ `annexe_a`
+// des rapports JSON produits par mb-remediation → permet l'import automatique.
+const ANNEXE_A_KEYS = [
+  "core_checksums", "plugin_checksums", "premium_diff", "no_unknown_php",
+  "no_generated_theme", "mu_plugins_clean", "no_rogue_admin", "no_app_passwords",
+  "cron_clean", "functions_clean", "htaccess_clean", "secrets_rotated",
+  "wordfence_clean", "infomaniak_clean", "no_spam_indexed",
 ];
 const ANNEXE_A = [
   "wp core verify-checksums → OK",
@@ -775,6 +805,71 @@ function setView(v) {
 }
 document.getElementById("tabPhases").addEventListener("click", () => setView("phases"));
 document.getElementById("tabSites").addEventListener("click", () => setView("sites"));
+
+// ================= IMPORT RAPPORT mb-remediation =================
+const KEY_TO_INDEX = {};
+ANNEXE_A_KEYS.forEach((k, i) => { KEY_TO_INDEX[k] = i; });
+const siteNames = new Set(SITES.map(s => s.n));
+
+function applyReport(rep) {
+  // rep = un rapport de site (build_report). Retourne un résumé ou null.
+  if (!rep || typeof rep !== "object" || !rep.site || !rep.annexe_a) return null;
+  const name = rep.site;
+  if (!siteNames.has(name)) return { name, skipped: true };
+  store.siteChecks[name] = store.siteChecks[name] || {};
+  let checked = 0, cleared = 0, manual = 0;
+  Object.entries(rep.annexe_a).forEach(([key, val]) => {
+    const idx = KEY_TO_INDEX[key];
+    if (idx === undefined) return;
+    if (val === true) { store.siteChecks[name][idx] = true; checked++; }
+    else if (val === false) { store.siteChecks[name][idx] = false; cleared++; }
+    else { manual++; } // null → laissé tel quel (vérif manuelle)
+  });
+  // statut suggéré : si tout l'auto est vert et le site n'est pas déjà plus avancé
+  if (rep.annexe_a_all_green_auto && ["todo", "backup", "eradicate", "rebuild"].includes(siteStatus(name))) {
+    store.siteStatus[name] = "verified";
+  }
+  return { name, checked, cleared, manual };
+}
+
+function handleReportData(data) {
+  const reports = Array.isArray(data) ? data : [data];
+  const done = [], skipped = [];
+  reports.forEach(r => {
+    const res = applyReport(r);
+    if (!res) return;
+    (res.skipped ? skipped : done).push(res.name);
+  });
+  return { done, skipped, total: reports.length };
+}
+
+document.getElementById("importReport").addEventListener("change", async (e) => {
+  const hint = document.getElementById("importHint");
+  const files = [...e.target.files];
+  if (!files.length) return;
+  let allDone = [], allSkipped = [], errors = 0;
+  for (const f of files) {
+    try {
+      const data = JSON.parse(await f.text());
+      const r = handleReportData(data);
+      allDone.push(...r.done); allSkipped.push(...r.skipped);
+    } catch (err) { errors++; }
+  }
+  saveState();
+  renderSites();
+  e.target.value = ""; // permet de réimporter le même fichier
+  if (errors && !allDone.length) {
+    hint.className = "import-hint err";
+    hint.textContent = "Fichier JSON invalide ou format inattendu.";
+  } else {
+    hint.className = "import-hint ok";
+    const uniq = [...new Set(allDone)];
+    let msg = `✓ ${uniq.length} site(s) mis à jour depuis le rapport`;
+    if (allSkipped.length) msg += ` · ${[...new Set(allSkipped)].length} inconnu(s) ignoré(s)`;
+    if (errors) msg += ` · ${errors} fichier(s) illisible(s)`;
+    hint.textContent = msg;
+  }
+});
 
 // ================= BOUTONS ================
 document.getElementById("resetBtn").addEventListener("click", () => {

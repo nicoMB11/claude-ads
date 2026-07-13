@@ -716,6 +716,89 @@ def module_clean(ssh: SSH, site: Site, store: SnapshotStore, log: IncidentLog,
 
 
 # --------------------------------------------------------------------------- #
+# Rotation des secrets (Phase 2.3) — GARDÉ                                       #
+# --------------------------------------------------------------------------- #
+
+def _strong_password(length: int = 24) -> str:
+    import secrets
+    import string
+    alphabet = string.ascii_letters + string.digits + "!@#%^*-_=+"
+    return "".join(secrets.choice(alphabet) for _ in range(length))
+
+
+def module_rotate(ssh: SSH, site: Site, store: SnapshotStore, log: IncidentLog,
+                  out_dir: Path, execute: bool, db_password: Optional[str]) -> None:
+    """Régénère les salts, réinitialise les mots de passe admin, et (optionnel)
+    reporte un nouveau mot de passe DB dans wp-config. Les nouveaux mots de passe
+    sont écrits UNIQUEMENT dans un fichier LOCAL (jamais dans le log JSONL)."""
+    # GARDE-FOU : snapshot vérifié requis (on modifie wp-config + table users).
+    verified = store.latest_verified_backup(site.name)
+    if verified is None:
+        human(f"  🔴 {site.name} : aucun snapshot vérifié. `rotate` refuse.\n"
+              f"     Lance d'abord : backup --site={site.name} --status=INFECTE --execute", "err")
+        log.write("rotate_refused", site=site.name, reason="no_verified_backup")
+        return
+
+    admins = _json_wp(ssh, site, "user list --role=administrator --fields=ID,user_login") or []
+    human(f"  {len(admins)} admin(s), salts, "
+          f"{'+ mot de passe DB' if db_password else 'DB inchangée'}", "step")
+
+    if not execute:
+        human(f"  [dry-run] régénérerait les 8 salts (wp config shuffle-salts)", "warn")
+        for a in admins:
+            human(f"  [dry-run] réinitialiserait le mot de passe de « {a['user_login']} »", "warn")
+        if db_password:
+            human(f"  [dry-run] reporterait DB_PASSWORD dans wp-config.php", "warn")
+        log.write("rotate_dryrun", site=site.name, admins=len(admins))
+        return
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    cred_file = out_dir / f"{site.name}.new-credentials.txt"
+    lines = [f"# {site.name} — nouveaux secrets générés le {now_utc().isoformat()}",
+             f"# À stocker dans ton gestionnaire de mots de passe, puis SUPPRIMER ce fichier.\n"]
+
+    # 1) salts (déconnecte toutes les sessions)
+    rc, out, err = ssh.wp(site, "config shuffle-salts", check=False)
+    ok = rc == 0
+    human(f"  {'✓' if ok else '✗'} salts régénérés", "ok" if ok else "err")
+    log.write("rotate_salts", site=site.name, ok=ok, err=err.strip())
+
+    # 2) mots de passe admin (nouveau mdp aléatoire, écrit en local seulement)
+    for a in admins:
+        pw = _strong_password()
+        rc, out, err = ssh.wp(site, f"user update {shlex.quote(str(a['ID']))} "
+                                    f"--user_pass={shlex.quote(pw)}", check=False)
+        ok = rc == 0
+        human(f"  {'✓' if ok else '✗'} mot de passe réinitialisé : {a['user_login']}",
+              "ok" if ok else "err")
+        # le mot de passe n'apparaît QUE dans le fichier local, jamais dans le log
+        lines.append(f"admin {a['user_login']} (ID {a['ID']}) : {pw}" if ok
+                     else f"admin {a['user_login']} (ID {a['ID']}) : ÉCHEC")
+        log.write("rotate_admin", site=site.name, user=a["user_login"], ok=ok)
+
+    # 3) mot de passe DB (le changement MySQL se fait dans le Manager Infomaniak ;
+    #    ici on ne fait que reporter la nouvelle valeur dans wp-config.php)
+    if db_password:
+        rc, out, err = ssh.wp(site, f"config set DB_PASSWORD {shlex.quote(db_password)}",
+                              check=False)
+        ok = rc == 0
+        human(f"  {'✓' if ok else '✗'} DB_PASSWORD reporté dans wp-config.php", "ok" if ok else "err")
+        lines.append(f"DB_PASSWORD : (reporté dans wp-config ; change-le AUSSI côté MySQL/Manager)")
+        log.write("rotate_db", site=site.name, ok=ok)
+    else:
+        human("  → mot de passe DB non touché — change-le dans le Manager Infomaniak "
+              "puis relance avec --db-password=<nouveau>", "warn")
+
+    cred_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    try:
+        os.chmod(cred_file, 0o600)
+    except OSError:
+        pass
+    human(f"  ✓ nouveaux secrets écrits (local, chmod 600) : {cred_file}", "ok")
+    human("  ⚠️ range-les dans ton gestionnaire puis SUPPRIME ce fichier.", "warn")
+
+
+# --------------------------------------------------------------------------- #
 # Restore (module 0)                                                             #
 # --------------------------------------------------------------------------- #
 
@@ -889,6 +972,13 @@ def build_parser() -> argparse.ArgumentParser:
     add_site_selectors(sp, destructive=True)
     sp.add_argument("--execute", action="store_true", help="Supprime réellement (sinon dry-run)")
 
+    sp = sub.add_parser("rotate", help="Phase 2.3 : salts + mots de passe admin (+ DB). Gardé par backup.")
+    sp.add_argument("--site", action="append", default=[], help="Nom de site (répétable)")
+    sp.add_argument("--all", action="store_true", help="Tous les sites")
+    sp.add_argument("--db-password", dest="db_password",
+                    help="Nouveau DB_PASSWORD à reporter dans wp-config (après changement Manager)")
+    sp.add_argument("--execute", action="store_true", help="Agit réellement (sinon dry-run)")
+
     return p
 
 
@@ -921,7 +1011,7 @@ def main(argv: Optional[list[str]] = None) -> int:
             sys.exit("🔴 `clean --all` interdit. Un site à la fois (--site=<nom>).")
         if not args.site:
             sys.exit("🔴 `clean` exige --site=<nom> (jamais les 25 d'un coup).")
-    if args.command in READ_ONLY or args.command == "backup":
+    if args.command in READ_ONLY or args.command in ("backup", "rotate"):
         if not cfg.select(args.site, getattr(args, "all", False)):
             sys.exit("Précise --site=<nom> (répétable) ou --all.")
 
@@ -962,6 +1052,14 @@ def main(argv: Optional[list[str]] = None) -> int:
             for site in sites:
                 human(f"[clean] {site.name} ({'EXECUTE' if args.execute else 'dry-run'})", "step")
                 module_clean(ssh, site, store, log, execute=args.execute)
+            return 0
+
+        if args.command == "rotate":
+            sites = cfg.select(args.site, getattr(args, "all", False))
+            for site in sites:
+                human(f"[rotate] {site.name} ({'EXECUTE' if args.execute else 'dry-run'})", "step")
+                module_rotate(ssh, site, store, log, out_dir,
+                              execute=args.execute, db_password=args.db_password)
             return 0
 
     return 0

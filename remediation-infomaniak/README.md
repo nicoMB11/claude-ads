@@ -40,6 +40,11 @@ sur la même machine.
   (« site déclaré sain », 15 points) — un site ne repasse « En ligne » qu'une
   fois cette checklist verte.
 - ⭐ = sites prioritaires (poeles-cheminees.com, prod.baycake.fr).
+- **Import automatique** : le bouton « Importer un rapport `mb-remediation` »
+  charge les fichiers JSON produits par l'outil (`mb-out/<site>.report.json` ou
+  l'agrégat `_report.all.json`) et **coche l'Annexe A automatiquement** par site
+  (les points marqués « vérif. manuelle » restent à cocher à la main). Un site
+  dont tous les points automatiques sont verts passe au statut « Vérifié ».
 
 | Cat. | Traitement | Sites |
 |---|---|---|
