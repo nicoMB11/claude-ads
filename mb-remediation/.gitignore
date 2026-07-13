@@ -1,0 +1,13 @@
+# La config réelle cartographie ton infra — JAMAIS committée
+sites.yaml
+
+# Snapshots et sorties — restent en local, jamais sur le serveur ni sur GitHub
+mb-backups/
+mb-out/
+*.log
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/

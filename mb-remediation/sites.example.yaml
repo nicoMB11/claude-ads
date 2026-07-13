@@ -1,0 +1,60 @@
+# ============================================================================
+# mb-remediation — configuration des sites
+# ----------------------------------------------------------------------------
+# Copie ce fichier en `sites.yaml` et remplis-le. `sites.yaml` est dans le
+# .gitignore : il ne DOIT PAS être committé (il cartographie ton infra).
+#
+# AUCUN MOT DE PASSE EN DUR. Utilise une clé SSH (ssh_key_path) ou l'agent SSH.
+# ============================================================================
+
+ssh:
+  host: 1234.ftp.infomaniak.com   # hôte SSH Infomaniak
+  port: 22
+  user: d56bh5_mbagency           # le NOUVEAU compte (après rotation Phase 0)
+  # Chemin vers ta clé privée. Laisse vide pour utiliser l'agent SSH.
+  ssh_key_path: ~/.ssh/id_ed25519
+  # ssh_key_passphrase_env: MB_SSH_PASSPHRASE   # variable d'env, jamais en dur
+
+# Où sont écrits les snapshots (module backup). JAMAIS sur l'hébergement.
+backup_dir: ~/mb-backups
+
+# Opérateur (apparaît dans les métadonnées de snapshot et les logs)
+operator: nicolas
+
+# Chemin de la commande wp côté serveur (souvent juste "wp" chez Infomaniak)
+wp_bin: wp
+
+# ----------------------------------------------------------------------------
+# Les 25 sites. `path` = racine WordPress (là où se trouve wp-config.php).
+# `category` (A/B/C/D) est indicatif, repris du runbook.
+# ----------------------------------------------------------------------------
+sites:
+  # --- Catégorie A : reconstruction complète (webshell) ---
+  - {name: actprev,               path: /home/clients/xxx/sites/actprev,               category: A}
+  - {name: ansushi,               path: /home/clients/xxx/sites/ansushi,               category: A}
+  - {name: chardenon,             path: /home/clients/xxx/sites/chardenon,             category: A}
+  - {name: flci,                  path: /home/clients/xxx/sites/flci,                  category: A}
+  - {name: ge-solutions,          path: /home/clients/xxx/sites/ge-solutions,          category: A}
+  - {name: lcd,                   path: /home/clients/xxx/sites/lcd,                   category: A}
+  - {name: prod.baycake.fr,       path: /home/clients/xxx/sites/baycake,               category: A}
+  - {name: marbrerie-buisan,      path: /home/clients/xxx/sites/marbrerie-buisan,      category: A}
+  - {name: poeles-cheminees.com,  path: /home/clients/xxx/sites/poeles-cheminees,      category: A}
+  # --- Catégorie B : nettoyage + vérif approfondie ---
+  - {name: estel,                 path: /home/clients/xxx/sites/estel,                 category: B}
+  - {name: EDLC,                  path: /home/clients/xxx/sites/edlc,                  category: B}
+  - {name: apf,                   path: /home/clients/xxx/sites/apf,                   category: B}
+  - {name: mobilierbureauservice, path: /home/clients/xxx/sites/mobilierbureauservice, category: B}
+  - {name: kb,                    path: /home/clients/xxx/sites/kb,                    category: B}
+  # --- Catégorie C : vérification obligatoire (≠ sain) ---
+  - {name: cantalauze,            path: /home/clients/xxx/sites/cantalauze,            category: C}
+  - {name: 1.mbagency,            path: /home/clients/xxx/sites/mbagency,              category: C}
+  - {name: buisan.fr,             path: /home/clients/xxx/sites/buisan,                category: C}
+  - {name: candidat,              path: /home/clients/xxx/sites/candidat,              category: C}
+  - {name: jacqueslechat.fr,      path: /home/clients/xxx/sites/jacqueslechat,         category: C}
+  - {name: locarca,               path: /home/clients/xxx/sites/locarca,               category: C}
+  # --- Catégorie D : test/dev (à supprimer si inutiles) ---
+  - {name: dev,      path: /home/clients/xxx/sites/dev,      category: D}
+  - {name: test,     path: /home/clients/xxx/sites/test,     category: D}
+  - {name: testtplm, path: /home/clients/xxx/sites/testtplm, category: D}
+  - {name: tplm,     path: /home/clients/xxx/sites/tplm,     category: D}
+  - {name: tplm2,    path: /home/clients/xxx/sites/tplm2,    category: D}
