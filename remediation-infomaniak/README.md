@@ -6,24 +6,19 @@ du compte d'hébergement Infomaniak MB1 (650852) — 25 sites WordPress.
 ## Utilisation
 
 Ouvrir `index.html` dans un navigateur. Rien à installer : c'est un fichier
-autonome (HTML + CSS + JS, aucune dépendance externe).
+autonome (HTML + CSS + JS, aucune dépendance externe). La progression est
+enregistrée dans le navigateur (`localStorage`) et conservée entre les visites
+sur la même machine.
 
-## Ce que fait l'appli
+## Deux vues (onglets)
 
+### 1. Par phase
 - **Bannière « Phase en cours »** : indique automatiquement la première phase
   non terminée. La Phase 0 (confinement) est signalée comme **bloquante** — tant
   qu'elle n'est pas cochée à 100 %, la porte reste ouverte.
 - **Frise des phases** : une pastille par phase (0 → 6) avec son avancement.
-  Cliquer déplie la phase correspondante.
-- **Progression globale** en haut à droite.
-- **Cases à cocher** pour chaque item du runbook, groupées par sous-phase.
-- **Persistance** : l'avancement est enregistré dans le navigateur
-  (`localStorage`), donc conservé entre les visites sur la même machine.
-- **Réinitialiser** / **Tout replier** dans la barre du bas.
-
-## Contenu
-
-Les phases reprennent le runbook de remédiation v2 :
+- **Cases à cocher** pour chaque item du runbook, groupées par sous-phase, avec
+  **progression globale**.
 
 | Phase | Objet |
 |---|---|
@@ -34,6 +29,29 @@ Les phases reprennent le runbook de remédiation v2 :
 | 4 | Restructuration (isolation, durcissement, sauvegardes) |
 | 5 | Obligations légales et clients (RGPD / CNIL) |
 | 6 | Surveillance continue |
+
+### 2. Par site (25 sites)
+- Les 25 sites regroupés par **catégorie** (A/B/C/D) avec un compteur de sites
+  traités par catégorie.
+- Pour chaque site, un **statut** sélectionnable :
+  À traiter → Sauvegarde INFECTÉ prise → Éradication → Reconstruction →
+  Vérifié (Annexe A verte) → Remis en ligne (ou Supprimé).
+- Chaque site est **dépliable** et contient sa propre **checklist Annexe A**
+  (« site déclaré sain », 15 points) — un site ne repasse « En ligne » qu'une
+  fois cette checklist verte.
+- ⭐ = sites prioritaires (poeles-cheminees.com, prod.baycake.fr).
+
+| Cat. | Traitement | Sites |
+|---|---|---|
+| **A** | Reconstruction complète (webshell) | actprev, ansushi, chardenon, flci, ge-solutions, lcd, prod.baycake.fr ⭐, marbrerie-buisan, poeles-cheminees.com ⭐ |
+| **B** | Nettoyage + vérif approfondie | estel, EDLC, apf, mobilierbureauservice, kb |
+| **C** | Vérification obligatoire (≠ sain) | cantalauze, 1.mbagency, buisan.fr, candidat, jacqueslechat.fr, locarca |
+| **D** | Test / dev (à supprimer) | dev, test, testtplm, tplm, tplm2 |
+
+> « Aucun artefact détecté » ≠ « sain » : l'attaquant avait un accès en écriture
+> sur les 25 sites. Aucun site n'est propre sans passer l'Annexe A.
+
+## Limites
 
 > La progression est **locale au navigateur**. Pour un suivi partagé en équipe,
 > il faudrait la relier à un stockage commun — non implémenté ici.

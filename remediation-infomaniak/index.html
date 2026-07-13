@@ -16,6 +16,7 @@
     --danger: #ff5b5b;
     --warn: #f0a92b;
     --ok: #35c26a;
+    --purple: #d98cff;
     --radius: 12px;
   }
   * { box-sizing: border-box; }
@@ -40,10 +41,20 @@
     background: linear-gradient(180deg, rgba(255,91,91,.10), rgba(255,91,91,.02));
     border: 1px solid rgba(255,91,91,.35);
     border-radius: var(--radius);
-    padding: 14px 16px; margin: 16px 0 24px; font-size: 13.5px;
+    padding: 14px 16px; margin: 16px 0 20px; font-size: 13.5px;
   }
   .incident strong { color: #ffb3b3; }
   .incident .meta { color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 6px; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 6px; margin-bottom: 22px; border-bottom: 1px solid var(--border); }
+  .tab {
+    background: none; border: none; color: var(--muted); cursor: pointer;
+    padding: 10px 16px; font-size: 14px; border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
 
   /* Current phase banner */
   .current {
@@ -68,7 +79,6 @@
   .bar { height: 7px; border-radius: 99px; background: var(--panel-2); overflow: hidden; min-width: 120px; flex: 1; }
   .bar > i { display: block; height: 100%; background: var(--accent); border-radius: 99px; transition: width .25s ease; }
   .bar.ok > i { background: var(--ok); }
-  .bar.danger > i { background: var(--danger); }
 
   /* Phase timeline chips */
   .timeline { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 26px; }
@@ -98,7 +108,7 @@
   .phase > summary::-webkit-details-marker { display: none; }
   .phase > summary:hover { background: var(--panel-2); }
   .caret { color: var(--muted); transition: transform .2s ease; flex-shrink: 0; }
-  .phase[open] .caret { transform: rotate(90deg); }
+  details[open] > summary .caret { transform: rotate(90deg); }
   .phase .ph-title { font-weight: 640; font-size: 15.5px; }
   .phase .ph-title .num {
     display: inline-block; min-width: 22px; margin-right: 8px;
@@ -114,7 +124,7 @@
   }
   .tag.manual { color: var(--warn); border-color: rgba(240,169,43,.4); }
   .tag.tool { color: var(--accent); border-color: rgba(76,141,255,.4); }
-  .tag.legal { color: #d98cff; border-color: rgba(217,140,255,.4); }
+  .tag.legal { color: var(--purple); border-color: rgba(217,140,255,.4); }
 
   .phase .body { padding: 4px 18px 18px; }
   .lead { color: var(--muted); font-size: 13px; margin: 2px 0 14px; }
@@ -135,18 +145,73 @@
   label.check input { margin: 3px 0 0; width: 16px; height: 16px; accent-color: var(--accent); flex-shrink: 0; cursor: pointer; }
   label.check span { font-size: 13.5px; }
   label.check.done span { color: var(--muted); text-decoration: line-through; text-decoration-color: rgba(154,167,180,.5); }
-  label.check span code {
+  label.check span code, .lead code, .ph-when code, .sub code {
     background: var(--panel-2); border: 1px solid var(--border);
     border-radius: 5px; padding: 1px 5px; font-size: 12px;
   }
   .note { color: var(--warn); font-size: 12.5px; margin: 6px 8px 2px; }
   .note.stop { color: var(--danger); }
 
+  /* ---- Site view ---- */
+  .cat-summary { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 22px; }
+  .cat-card {
+    flex: 1 1 180px; background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 12px 14px;
+  }
+  .cat-card .k { font-size: 12px; color: var(--muted); }
+  .cat-card .cat-badge { font-weight: 700; }
+  .cat-card .v { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 2px; }
+  .cat-card .v small { font-size: 12.5px; color: var(--muted); font-weight: 400; }
+
+  .site {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); margin-bottom: 10px; overflow: hidden;
+  }
+  .site.prio { border-color: rgba(240,169,43,.45); }
+  .site > summary {
+    list-style: none; cursor: pointer; padding: 12px 14px;
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  }
+  .site > summary::-webkit-details-marker { display: none; }
+  .site > summary:hover { background: var(--panel-2); }
+  .site .name { font-weight: 600; font-size: 14.5px; }
+  .site .name .star { color: var(--warn); margin-left: 5px; }
+  .catpill {
+    font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 6px;
+    border: 1px solid var(--border);
+  }
+  .catpill.A { color: var(--danger); border-color: rgba(255,91,91,.45); }
+  .catpill.B { color: var(--warn); border-color: rgba(240,169,43,.45); }
+  .catpill.C { color: var(--accent); border-color: rgba(76,141,255,.45); }
+  .catpill.D { color: var(--muted); }
+  .site .treat { color: var(--muted); font-size: 12px; }
+  .site .right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  .statusdot { width: 9px; height: 9px; border-radius: 50%; background: var(--border); flex-shrink: 0; }
+  select.status {
+    background: var(--panel-2); color: var(--text); border: 1px solid var(--border);
+    border-radius: 8px; padding: 5px 8px; font-size: 12.5px; cursor: pointer;
+  }
+  .site .body { padding: 2px 14px 14px; }
+  .site .annexe-h {
+    font-size: 12px; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--muted); margin: 10px 0 6px; display: flex; align-items: center; gap: 8px;
+  }
+  .site .annexe-h .count { font-variant-numeric: tabular-nums; }
+
+  /* status colors on dot */
+  .st-todo { background: var(--border); }
+  .st-backup { background: var(--purple); }
+  .st-eradicate { background: var(--warn); }
+  .st-rebuild { background: var(--accent); }
+  .st-verified { background: var(--ok); }
+  .st-online { background: var(--ok); box-shadow: 0 0 0 3px rgba(53,194,106,.2); }
+  .st-deleted { background: #6b7683; }
+
   footer.actions {
     position: fixed; bottom: 0; left: 0; right: 0;
     background: rgba(14,17,22,.92); backdrop-filter: blur(8px);
     border-top: 1px solid var(--border); padding: 10px 18px;
-    display: flex; align-items: center; gap: 14px; justify-content: center;
+    display: flex; align-items: center; gap: 14px; justify-content: center; flex-wrap: wrap;
   }
   footer.actions .save { color: var(--muted); font-size: 12.5px; }
   button.btn {
@@ -155,11 +220,13 @@
   }
   button.btn:hover { border-color: var(--accent); }
   button.btn.ghost { color: var(--muted); }
+  .hidden { display: none !important; }
 
   @media (max-width: 620px) {
     .phase .ph-meta { margin-left: 0; flex-basis: 100%; }
     .phase > summary { flex-wrap: wrap; }
     .globalbar { margin-left: 0; flex-basis: 100%; }
+    .site .right { margin-left: 0; flex-basis: 100%; }
   }
 </style>
 </head>
@@ -168,7 +235,7 @@
 
   <header class="top">
     <div>
-      <h1>Remédiation Infomaniak — Suivi des phases</h1>
+      <h1>Remédiation Infomaniak — Suivi</h1>
       <p class="sub">Compte MB1 (650852) · utilisateur <code>d56bh5</code> · 25 sites WordPress</p>
     </div>
     <div class="globalbar">
@@ -188,17 +255,32 @@
     </div>
   </div>
 
-  <div class="current" id="currentBanner">
-    <div>
-      <div class="badge">Phase en cours</div>
-      <div class="phase-name" id="currentName">—</div>
-    </div>
-    <div class="hint" id="currentHint"></div>
+  <div class="tabs">
+    <button class="tab active" data-view="phases" id="tabPhases">Par phase</button>
+    <button class="tab" data-view="sites" id="tabSites">Par site (25)</button>
   </div>
 
-  <div class="timeline" id="timeline"></div>
+  <!-- ===== VUE PAR PHASE ===== -->
+  <section id="viewPhases">
+    <div class="current" id="currentBanner">
+      <div>
+        <div class="badge">Phase en cours</div>
+        <div class="phase-name" id="currentName">—</div>
+      </div>
+      <div class="hint" id="currentHint"></div>
+    </div>
+    <div class="timeline" id="timeline"></div>
+    <div id="phases"></div>
+  </section>
 
-  <div id="phases"></div>
+  <!-- ===== VUE PAR SITE ===== -->
+  <section id="viewSites" class="hidden">
+    <div class="cat-summary" id="catSummary"></div>
+    <p class="lead">Statut de chaque site. « Aucun artefact détecté » ≠ « sain » : chaque site conservé
+      doit passer l'<strong>Annexe A</strong> (dépliable ci-dessous) avant de repasser « En ligne ».
+      ⭐ = priorité (poeles-cheminees, prod.baycake).</p>
+    <div id="sites"></div>
+  </section>
 
 </div>
 
@@ -209,7 +291,7 @@
 </footer>
 
 <script>
-// ---- Données du runbook : chaque phase, ses groupes et ses items ----
+// ================= DONNÉES PHASES =================
 const DATA = [
   {
     id: "p0", num: "0", title: "Confinement", when: "aujourd'hui, ~1 h — à la main",
@@ -392,6 +474,57 @@ const DATA = [
   },
 ];
 
+// ================= DONNÉES SITES =================
+const CATS = {
+  A: { label: "Reconstruction complète", treat: "Clients prod, webshell → Phase 3" },
+  B: { label: "Nettoyage + vérif", treat: "Clients prod, artefacts partiels" },
+  C: { label: "Vérification obligatoire", treat: "Exposés, sans artefact détecté (≠ sain)" },
+  D: { label: "Test / dev", treat: "Supprimer s'ils ne servent à rien" },
+};
+const SITES = [
+  // Catégorie A
+  { n: "actprev", c: "A" }, { n: "ansushi", c: "A" }, { n: "chardenon", c: "A" },
+  { n: "flci", c: "A" }, { n: "ge-solutions", c: "A" }, { n: "lcd", c: "A" },
+  { n: "prod.baycake.fr", c: "A", prio: true }, { n: "marbrerie-buisan", c: "A" },
+  { n: "poeles-cheminees.com", c: "A", prio: true },
+  // Catégorie B
+  { n: "estel", c: "B" }, { n: "EDLC", c: "B" }, { n: "apf", c: "B" },
+  { n: "mobilierbureauservice", c: "B" }, { n: "kb", c: "B" },
+  // Catégorie C
+  { n: "cantalauze", c: "C" }, { n: "1.mbagency", c: "C" }, { n: "buisan.fr", c: "C" },
+  { n: "candidat", c: "C" }, { n: "jacqueslechat.fr", c: "C" }, { n: "locarca", c: "C" },
+  // Catégorie D
+  { n: "dev", c: "D" }, { n: "test", c: "D" }, { n: "testtplm", c: "D" },
+  { n: "tplm", c: "D" }, { n: "tplm2", c: "D" },
+];
+const STATUSES = [
+  { v: "todo", label: "À traiter", cls: "st-todo" },
+  { v: "backup", label: "Sauvegarde INFECTÉ prise", cls: "st-backup" },
+  { v: "eradicate", label: "Éradication en cours", cls: "st-eradicate" },
+  { v: "rebuild", label: "Reconstruction en cours", cls: "st-rebuild" },
+  { v: "verified", label: "Vérifié — Annexe A verte", cls: "st-verified" },
+  { v: "online", label: "Remis en ligne", cls: "st-online" },
+  { v: "deleted", label: "Supprimé", cls: "st-deleted" },
+];
+const ANNEXE_A = [
+  "wp core verify-checksums → OK",
+  "wp plugin verify-checksums --all → OK",
+  "Extensions premium : diff ZIP officiel → OK",
+  "Aucun .php inconnu (racine, wp-content, uploads, themes)",
+  "Aucun dossier de thème à nom généré",
+  "mu-plugins/ vide ou 100 % légitime et relu",
+  "Aucun compte admin non reconnu, aucun trou d'ID",
+  "Aucune Application Password active",
+  "Tâches cron : uniquement des hooks légitimes",
+  "functions.php du thème actif : aucun marqueur d'obfuscation",
+  ".htaccess : aucune redirection inconnue",
+  "Salts régénérés, mots de passe admin + DB changés",
+  "Scan Wordfence complet : 0 alerte",
+  "Scan Infomaniak : 0 menace",
+  "Aucune page de spam indexée (site:domaine casino, GSC)",
+];
+
+// ================= ÉTAT =================
 const STORAGE_KEY = "mb-remediation-progress-v1";
 const tagLabel = { manual: "À la main", tool: "Outillé", legal: "Légal" };
 
@@ -399,15 +532,19 @@ function loadState() {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
   catch (e) { return {}; }
 }
-let state = loadState();
+let store = loadState();
+// structure: { checks: {key:bool}, siteStatus: {name:status}, siteChecks: {name:{i:bool}} }
+store.checks = store.checks || {};
+store.siteStatus = store.siteStatus || {};
+store.siteChecks = store.siteChecks || {};
 
-// seed default-done items once
+// seed default-done phase items once
 DATA.forEach(p => p.groups.forEach((g, gi) => g.items.forEach((it, ii) => {
   const key = p.id + ":" + gi + ":" + ii;
-  if (typeof it === "object" && it.done && !(key in state)) state[key] = true;
+  if (typeof it === "object" && it.done && !(key in store.checks)) store.checks[key] = true;
 })));
 
-function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(store)); }
 
 function itemText(it) { return typeof it === "string" ? it : it.t; }
 function isStop(it) { return typeof it === "object" && it.stop; }
@@ -415,20 +552,25 @@ function isStop(it) { return typeof it === "object" && it.stop; }
 function phaseCounts(p) {
   let total = 0, done = 0;
   p.groups.forEach((g, gi) => g.items.forEach((it, ii) => {
+    if (isStop(it)) return;
     total++;
-    if (state[p.id + ":" + gi + ":" + ii]) done++;
+    if (store.checks[p.id + ":" + gi + ":" + ii]) done++;
   }));
   return { total, done };
 }
+function siteStatus(name) { return store.siteStatus[name] || "todo"; }
+function siteAnnexeCount(name) {
+  const s = store.siteChecks[name] || {};
+  let done = 0; for (let i = 0; i < ANNEXE_A.length; i++) if (s[i]) done++;
+  return { total: ANNEXE_A.length, done };
+}
 
-function render() {
+// ================= RENDU PHASES =================
+function renderPhases() {
   const phasesEl = document.getElementById("phases");
   phasesEl.innerHTML = "";
-
   DATA.forEach(p => {
     const { total, done } = phaseCounts(p);
-    const complete = done === total;
-
     const details = document.createElement("details");
     details.className = "phase" + (p.crit ? " crit" : "");
     details.open = !!p._open;
@@ -452,11 +594,8 @@ function render() {
       html += `<div class="group"><h4>${g.h}</h4><ul class="checks">`;
       g.items.forEach((it, ii) => {
         const key = p.id + ":" + gi + ":" + ii;
-        const checked = !!state[key];
-        if (isStop(it)) {
-          html += `<li><div class="note stop">${itemText(it)}</div></li>`;
-          return;
-        }
+        if (isStop(it)) { html += `<li><div class="note stop">${itemText(it)}</div></li>`; return; }
+        const checked = !!store.checks[key];
         html += `<li><label class="check${checked ? " done" : ""}">
           <input type="checkbox" data-key="${key}" ${checked ? "checked" : ""}>
           <span>${itemText(it)}</span></label></li>`;
@@ -466,30 +605,120 @@ function render() {
     body.innerHTML = html;
     details.appendChild(body);
     phasesEl.appendChild(details);
-
     details.addEventListener("toggle", () => { p._open = details.open; });
   });
 
   phasesEl.querySelectorAll("input[type=checkbox]").forEach(cb => {
     cb.addEventListener("change", () => {
-      state[cb.dataset.key] = cb.checked;
+      store.checks[cb.dataset.key] = cb.checked;
       saveState();
-      updateComputed();
-      const lbl = cb.closest("label");
-      lbl.classList.toggle("done", cb.checked);
-      // update the phase count in-place
+      cb.closest("label").classList.toggle("done", cb.checked);
       const det = cb.closest("details");
       const p = DATA.find(x => x.id === det.dataset.id);
-      const { total, done } = phaseCounts(p);
-      det.querySelector(".count").textContent = done + "/" + total;
+      const c = phaseCounts(p);
+      det.querySelector(".count").textContent = c.done + "/" + c.total;
+      updateComputed();
+    });
+  });
+}
+
+// ================= RENDU SITES =================
+function renderSites() {
+  // category summary
+  const sum = document.getElementById("catSummary");
+  sum.innerHTML = "";
+  ["A", "B", "C", "D"].forEach(cat => {
+    const list = SITES.filter(s => s.c === cat);
+    const done = list.filter(s => ["verified", "online", "deleted"].includes(siteStatus(s.n))).length;
+    const card = document.createElement("div");
+    card.className = "cat-card";
+    card.innerHTML = `<div class="k"><span class="catpill ${cat}">Cat. ${cat}</span> <span class="cat-badge">${CATS[cat].label}</span></div>
+      <div class="v">${done}<small> / ${list.length} traités</small></div>`;
+    sum.appendChild(card);
+  });
+
+  const el = document.getElementById("sites");
+  el.innerHTML = "";
+  ["A", "B", "C", "D"].forEach(cat => {
+    const header = document.createElement("div");
+    header.className = "group";
+    header.innerHTML = `<h4>Catégorie ${cat} — ${CATS[cat].treat}</h4>`;
+    el.appendChild(header);
+
+    SITES.filter(s => s.c === cat).forEach(s => {
+      const st = siteStatus(s.n);
+      const stDef = STATUSES.find(x => x.v === st) || STATUSES[0];
+      const ac = siteAnnexeCount(s.n);
+      const details = document.createElement("details");
+      details.className = "site" + (s.prio ? " prio" : "");
+      details.open = !!s._open;
+      details.dataset.name = s.n;
+
+      const opts = STATUSES.map(x => `<option value="${x.v}"${x.v === st ? " selected" : ""}>${x.label}</option>`).join("");
+      const summary = document.createElement("summary");
+      summary.innerHTML = `
+        <span class="caret">▶</span>
+        <span class="catpill ${s.c}">${s.c}</span>
+        <span class="name">${s.n}${s.prio ? '<span class="star" title="Priorité">★</span>' : ""}</span>
+        <span class="right">
+          <span class="annexe-mini" style="color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums">A: ${ac.done}/${ac.total}</span>
+          <span class="statusdot ${stDef.cls}"></span>
+          <select class="status" data-name="${s.n}">${opts}</select>
+        </span>`;
+      details.appendChild(summary);
+
+      const body = document.createElement("div");
+      body.className = "body";
+      let html = `<div class="annexe-h">Annexe A — site déclaré sain <span class="count">(${ac.done}/${ac.total})</span></div><ul class="checks">`;
+      ANNEXE_A.forEach((label, i) => {
+        const checked = !!(store.siteChecks[s.n] && store.siteChecks[s.n][i]);
+        html += `<li><label class="check${checked ? " done" : ""}">
+          <input type="checkbox" data-site="${s.n}" data-i="${i}" ${checked ? "checked" : ""}>
+          <span>${label}</span></label></li>`;
+      });
+      html += `</ul>`;
+      body.innerHTML = html;
+      details.appendChild(body);
+      el.appendChild(details);
+
+      details.addEventListener("toggle", (e) => { s._open = details.open; });
+      // prevent the <select> from toggling the <details>
+      details.querySelector("select.status").addEventListener("click", e => e.stopPropagation());
     });
   });
 
-  updateComputed();
+  // status selectors
+  el.querySelectorAll("select.status").forEach(sel => {
+    sel.addEventListener("change", () => {
+      store.siteStatus[sel.dataset.name] = sel.value;
+      saveState();
+      const dot = sel.parentElement.querySelector(".statusdot");
+      const stDef = STATUSES.find(x => x.v === sel.value) || STATUSES[0];
+      dot.className = "statusdot " + stDef.cls;
+      renderSites(); // refresh category summary counts
+      updateComputed();
+    });
+  });
+  // annexe checkboxes
+  el.querySelectorAll("input[type=checkbox][data-site]").forEach(cb => {
+    cb.addEventListener("change", () => {
+      const name = cb.dataset.site, i = cb.dataset.i;
+      store.siteChecks[name] = store.siteChecks[name] || {};
+      store.siteChecks[name][i] = cb.checked;
+      saveState();
+      cb.closest("label").classList.toggle("done", cb.checked);
+      const ac = siteAnnexeCount(name);
+      const det = cb.closest("details");
+      det.querySelector(".annexe-mini").textContent = "A: " + ac.done + "/" + ac.total;
+      det.querySelector(".annexe-h .count").textContent = "(" + ac.done + "/" + ac.total + ")";
+      updateComputed();
+    });
+  });
 }
 
+// ================= CALCULS GLOBAUX =================
 function updateComputed() {
-  // global
+  // global phase progress
   let gTotal = 0, gDone = 0;
   DATA.forEach(p => { const c = phaseCounts(p); gTotal += c.total; gDone += c.done; });
   const pct = gTotal ? Math.round(gDone / gTotal * 100) : 0;
@@ -517,7 +746,6 @@ function updateComputed() {
     chip._phaseId = p.id;
   });
 
-  // current phase banner
   const banner = document.getElementById("currentBanner");
   const nameEl = document.getElementById("currentName");
   const hintEl = document.getElementById("currentHint");
@@ -532,43 +760,64 @@ function updateComputed() {
     hintEl.textContent = blocking
       ? "⚠️ Phase bloquante : tant qu'elle n'est pas terminée, la porte reste ouverte. On ne nettoie rien avant."
       : currentPhase.lead;
-    // mark active chip
     [...tl.children].forEach(ch => ch.classList.toggle("active", ch._phaseId === currentPhase.id));
   }
 }
 
+// ================= ONGLETS =================
+function setView(v) {
+  const isPhases = v === "phases";
+  document.getElementById("viewPhases").classList.toggle("hidden", !isPhases);
+  document.getElementById("viewSites").classList.toggle("hidden", isPhases);
+  document.getElementById("tabPhases").classList.toggle("active", isPhases);
+  document.getElementById("tabSites").classList.toggle("active", !isPhases);
+  try { localStorage.setItem("mb-remediation-view", v); } catch (e) {}
+}
+document.getElementById("tabPhases").addEventListener("click", () => setView("phases"));
+document.getElementById("tabSites").addEventListener("click", () => setView("sites"));
+
+// ================= BOUTONS ================
 document.getElementById("resetBtn").addEventListener("click", () => {
-  if (confirm("Réinitialiser toute la progression ? Cette action est irréversible.")) {
-    state = {};
-    // re-seed defaults
+  if (confirm("Réinitialiser toute la progression (phases + sites) ? Cette action est irréversible.")) {
+    store = { checks: {}, siteStatus: {}, siteChecks: {} };
     DATA.forEach(p => p.groups.forEach((g, gi) => g.items.forEach((it, ii) => {
-      if (typeof it === "object" && it.done) state[p.id + ":" + gi + ":" + ii] = true;
+      if (typeof it === "object" && it.done) store.checks[p.id + ":" + gi + ":" + ii] = true;
     })));
     saveState();
     DATA.forEach(p => p._open = false);
-    render();
+    SITES.forEach(s => s._open = false);
+    renderPhases(); renderSites(); updateComputed();
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 });
-
 document.getElementById("collapseAll").addEventListener("click", () => {
-  const anyOpen = DATA.some(p => p._open);
-  DATA.forEach(p => p._open = !anyOpen);
-  document.getElementById("collapseAll").textContent = anyOpen ? "Tout déplier" : "Tout replier";
-  render();
+  const onSites = !document.getElementById("viewSites").classList.contains("hidden");
+  if (onSites) {
+    const anyOpen = SITES.some(s => s._open);
+    SITES.forEach(s => s._open = !anyOpen);
+    renderSites();
+  } else {
+    const anyOpen = DATA.some(p => p._open);
+    DATA.forEach(p => p._open = !anyOpen);
+    renderPhases();
+  }
 });
 
-// open the current (first incomplete) phase by default
+// ================= INIT ================
 (function initOpen() {
-  let opened = false;
   for (const p of DATA) {
     const c = phaseCounts(p);
-    if (c.done !== c.total) { p._open = true; opened = true; break; }
+    if (c.done !== c.total) { p._open = true; return; }
   }
-  if (!opened) DATA[DATA.length - 1]._open = true;
+  DATA[DATA.length - 1]._open = true;
 })();
 
-render();
+renderPhases();
+renderSites();
+updateComputed();
+let savedView = "phases";
+try { savedView = localStorage.getItem("mb-remediation-view") || "phases"; } catch (e) {}
+setView(savedView);
 </script>
 </body>
 </html>
