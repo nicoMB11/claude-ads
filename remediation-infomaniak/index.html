@@ -1,0 +1,574 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Remédiation Infomaniak — Suivi des phases</title>
+<style>
+  :root {
+    --bg: #0e1116;
+    --panel: #161b22;
+    --panel-2: #1c232d;
+    --border: #2a323d;
+    --text: #e6edf3;
+    --muted: #9aa7b4;
+    --accent: #4c8dff;
+    --danger: #ff5b5b;
+    --warn: #f0a92b;
+    --ok: #35c26a;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 24px 18px 96px; }
+
+  header.top {
+    display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start;
+    justify-content: space-between; margin-bottom: 8px;
+  }
+  h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); font-size: 13.5px; margin: 0; }
+
+  .incident {
+    background: linear-gradient(180deg, rgba(255,91,91,.10), rgba(255,91,91,.02));
+    border: 1px solid rgba(255,91,91,.35);
+    border-radius: var(--radius);
+    padding: 14px 16px; margin: 16px 0 24px; font-size: 13.5px;
+  }
+  .incident strong { color: #ffb3b3; }
+  .incident .meta { color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 6px; }
+
+  /* Current phase banner */
+  .current {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px 18px; margin-bottom: 22px;
+  }
+  .current .badge {
+    font-size: 12px; text-transform: uppercase; letter-spacing: .08em;
+    color: var(--muted);
+  }
+  .current .phase-name { font-size: 18px; font-weight: 650; }
+  .current .phase-name b { color: var(--accent); }
+  .current .hint { color: var(--muted); font-size: 13px; flex-basis: 100%; }
+  .current.blocking { border-color: rgba(255,91,91,.5); }
+  .current.blocking .phase-name b { color: var(--danger); }
+
+  /* Global progress */
+  .globalbar { display: flex; align-items: center; gap: 12px; margin-left: auto; }
+  .globalbar .pct { font-variant-numeric: tabular-nums; font-weight: 650; font-size: 15px; }
+
+  .bar { height: 7px; border-radius: 99px; background: var(--panel-2); overflow: hidden; min-width: 120px; flex: 1; }
+  .bar > i { display: block; height: 100%; background: var(--accent); border-radius: 99px; transition: width .25s ease; }
+  .bar.ok > i { background: var(--ok); }
+  .bar.danger > i { background: var(--danger); }
+
+  /* Phase timeline chips */
+  .timeline { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 26px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 7px;
+    border: 1px solid var(--border); background: var(--panel);
+    border-radius: 99px; padding: 6px 12px; font-size: 12.5px; color: var(--muted);
+    cursor: pointer; user-select: none;
+  }
+  .chip:hover { border-color: var(--accent); color: var(--text); }
+  .chip .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--border); }
+  .chip.done .dot { background: var(--ok); }
+  .chip.active { color: var(--text); border-color: var(--accent); }
+  .chip.active .dot { background: var(--accent); }
+  .chip .mini { font-variant-numeric: tabular-nums; opacity: .8; }
+
+  /* Phase cards */
+  .phase {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); margin-bottom: 14px; overflow: hidden;
+  }
+  .phase.crit { border-color: rgba(255,91,91,.4); }
+  .phase > summary {
+    list-style: none; cursor: pointer; padding: 16px 18px;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .phase > summary::-webkit-details-marker { display: none; }
+  .phase > summary:hover { background: var(--panel-2); }
+  .caret { color: var(--muted); transition: transform .2s ease; flex-shrink: 0; }
+  .phase[open] .caret { transform: rotate(90deg); }
+  .phase .ph-title { font-weight: 640; font-size: 15.5px; }
+  .phase .ph-title .num {
+    display: inline-block; min-width: 22px; margin-right: 8px;
+    color: var(--accent); font-variant-numeric: tabular-nums;
+  }
+  .phase.crit .ph-title .num { color: var(--danger); }
+  .phase .ph-when { color: var(--muted); font-size: 12.5px; font-weight: 400; }
+  .phase .ph-meta { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+  .phase .count { font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .tag {
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em;
+    padding: 3px 8px; border-radius: 99px; border: 1px solid var(--border); color: var(--muted);
+  }
+  .tag.manual { color: var(--warn); border-color: rgba(240,169,43,.4); }
+  .tag.tool { color: var(--accent); border-color: rgba(76,141,255,.4); }
+  .tag.legal { color: #d98cff; border-color: rgba(217,140,255,.4); }
+
+  .phase .body { padding: 4px 18px 18px; }
+  .lead { color: var(--muted); font-size: 13px; margin: 2px 0 14px; }
+  .lead.alert { color: #ffb3b3; }
+
+  .group { margin: 4px 0 14px; }
+  .group > h4 {
+    font-size: 12.5px; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--muted); margin: 14px 0 8px; font-weight: 600;
+  }
+  ul.checks { list-style: none; margin: 0; padding: 0; }
+  ul.checks li { margin: 0; }
+  label.check {
+    display: flex; gap: 11px; align-items: flex-start;
+    padding: 7px 8px; border-radius: 8px; cursor: pointer;
+  }
+  label.check:hover { background: var(--panel-2); }
+  label.check input { margin: 3px 0 0; width: 16px; height: 16px; accent-color: var(--accent); flex-shrink: 0; cursor: pointer; }
+  label.check span { font-size: 13.5px; }
+  label.check.done span { color: var(--muted); text-decoration: line-through; text-decoration-color: rgba(154,167,180,.5); }
+  label.check span code {
+    background: var(--panel-2); border: 1px solid var(--border);
+    border-radius: 5px; padding: 1px 5px; font-size: 12px;
+  }
+  .note { color: var(--warn); font-size: 12.5px; margin: 6px 8px 2px; }
+  .note.stop { color: var(--danger); }
+
+  footer.actions {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: rgba(14,17,22,.92); backdrop-filter: blur(8px);
+    border-top: 1px solid var(--border); padding: 10px 18px;
+    display: flex; align-items: center; gap: 14px; justify-content: center;
+  }
+  footer.actions .save { color: var(--muted); font-size: 12.5px; }
+  button.btn {
+    background: var(--panel-2); color: var(--text); border: 1px solid var(--border);
+    border-radius: 8px; padding: 7px 14px; font-size: 13px; cursor: pointer;
+  }
+  button.btn:hover { border-color: var(--accent); }
+  button.btn.ghost { color: var(--muted); }
+
+  @media (max-width: 620px) {
+    .phase .ph-meta { margin-left: 0; flex-basis: 100%; }
+    .phase > summary { flex-wrap: wrap; }
+    .globalbar { margin-left: 0; flex-basis: 100%; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div>
+      <h1>Remédiation Infomaniak — Suivi des phases</h1>
+      <p class="sub">Compte MB1 (650852) · utilisateur <code>d56bh5</code> · 25 sites WordPress</p>
+    </div>
+    <div class="globalbar">
+      <span class="pct" id="globalPct">0 %</span>
+      <div class="bar" id="globalBar"><i style="width:0%"></i></div>
+    </div>
+  </header>
+
+  <div class="incident">
+    <strong>Incident :</strong> compromission au niveau du compte (accès FTP/SSH partagé sur <code>/</code>).
+    Deux vagues détectées — <strong>~21 mai 2026</strong> puis <strong>~10 juillet 2026</strong> (réinfection
+    après la quarantaine Infomaniak du 6 juillet).
+    <div class="meta">
+      <span>Vecteur : identifiants FTP/SSH sur la racine</span>
+      <span>Webshell : <code>Liar-Console.php</code></span>
+      <span>Plugin nulled : all-in-one-wp-migration</span>
+    </div>
+  </div>
+
+  <div class="current" id="currentBanner">
+    <div>
+      <div class="badge">Phase en cours</div>
+      <div class="phase-name" id="currentName">—</div>
+    </div>
+    <div class="hint" id="currentHint"></div>
+  </div>
+
+  <div class="timeline" id="timeline"></div>
+
+  <div id="phases"></div>
+
+</div>
+
+<footer class="actions">
+  <span class="save" id="saveState">Progression enregistrée automatiquement dans ce navigateur</span>
+  <button class="btn ghost" id="collapseAll">Tout replier</button>
+  <button class="btn ghost" id="resetBtn">Réinitialiser</button>
+</footer>
+
+<script>
+// ---- Données du runbook : chaque phase, ses groupes et ses items ----
+const DATA = [
+  {
+    id: "p0", num: "0", title: "Confinement", when: "aujourd'hui, ~1 h — à la main",
+    tag: "manual", crit: true,
+    lead: "Aucun outil ici. Rien ne s'automatise. Tant que cette phase n'est pas finie, l'accès attaquant est ACTIF.",
+    leadAlert: true,
+    groups: [
+      { h: "0.1 — Rotation des accès serveur", items: [
+        "Manager &gt; Hébergement &gt; FTP/SSH",
+        "Nouveau mot de passe <code>d56bh5_mbagency</code> (fort, unique, dans un gestionnaire)",
+        "Nouveau mot de passe <code>d56bh5_Victor</code>",
+        "Supprimer toute clé SSH non reconnue (vecteur le plus probable du retour du 10/07)",
+        "Vérifier qu'aucun 3e compte FTP n'a été créé",
+        "Restreindre SSH à ton IP fixe",
+        "⚠️ Garder SSH actif — canal de l'outil en Phase 2, désactivé en Phase 4",
+      ]},
+      { h: "0.2 — Accès Manager", items: [
+        { t: "Mot de passe Manager Infomaniak", done: true },
+        "Activer la 2FA",
+        "Forcer la déconnexion de toutes les sessions",
+        "Vérifier les utilisateurs ayant accès au Manager",
+      ]},
+      { h: "0.3 — Accès associés", items: [
+        "Mot de passe de la boîte mail liée au compte",
+        "Vérifier les redirections/règles de filtrage sur cette boîte",
+        "Si le mot de passe Infomaniak était réutilisé ailleurs → changer partout",
+      ]},
+      { h: "0.4 — Alerter l'hébergeur", items: [
+        "Envoyer le message support (Annexe D)",
+        "Demander le lien manquant du mail du 10/07 (champ « Lien(s) des données » vide)",
+        "Demander les logs FTP/SSH autour du 10 mai et du 10 juillet (IP, dates)",
+        "Chercher d'autres blocages Infomaniak dans ta boîte mail",
+      ]},
+      { h: "0.5 — Ouvrir le journal d'incident", items: [
+        "Document daté : chronologie, sites, actions horodatées, décisions (CNIL, clients, assurance)",
+      ]},
+    ]
+  },
+  {
+    id: "p1", num: "1", title: "Construction de l'outil + cartographie", when: "1 journée",
+    tag: "tool",
+    lead: "Préserver les preuves, bâtir mb-remediation (chez toi, jamais sur le serveur), puis cartographier en lecture seule.",
+    groups: [
+      { h: "1.A — Préserver les preuves", items: [
+        "NE PAS supprimer <code>_quarantaine_apf_20260706</code> ni le <code>debug.log</code> (pièces probantes)",
+        "Archive complète du compte en l'état, hors ligne, marquée « INFECTÉ — NE JAMAIS RESTAURER »",
+      ]},
+      { h: "1.D — Garde-fous obligatoires de l'outil", items: [
+        "🔴 <code>clean</code> refuse de démarrer sans snapshot <code>backup</code> vérifié",
+        "<code>--dry-run</code> par défaut ; <code>--execute</code> explicite",
+        "Snapshot fichiers + BDD avant chaque action, site par site (module 0)",
+        "Liste blanche de sites (<code>--site=</code>) — jamais les 25 d'un coup",
+        "Log horodaté de tout (alimente le journal d'incident)",
+        "Aucun mot de passe en dur ; dépôt privé",
+        "Snapshots JAMAIS stockés sur l'hébergement",
+      ]},
+      { h: "1.E — Développement", items: [
+        "Ordre impératif : <code>backup</code> d'abord (restore + diff testés), lecture seule ensuite, <code>clean</code> en dernier",
+        "Tester d'abord en lecture seule sur UN site de test (dev/test)",
+        "Ne lancer sur les sites clients qu'une fois le mode lecture validé",
+      ]},
+      { h: "1.F — Cartographie (lecture seule)", items: [
+        "<code>mb-remediation inventory --all</code>",
+        "<code>mb-remediation checksums --all</code>",
+        "<code>mb-remediation signatures --all</code>",
+        "<code>mb-remediation persistence --all</code>",
+        "<code>mb-remediation report --all</code> → la vérité terrain",
+      ]},
+    ]
+  },
+  {
+    id: "p2", num: "2", title: "Éradication", when: "1 journée, outillée",
+    tag: "tool",
+    lead: "Suppression des artefacts connus, chasse à la persistance, invalidation des sessions, puis vérification que rien ne repousse.",
+    groups: [
+      { h: "2.1 — Suppression des artefacts connus", items: [
+        "12 × <code>wp-content/Liar-Console.php</code>",
+        "16 × <code>wp-content/plugins/all-in-one-wp-migration/</code>",
+        "~58 × faux dossiers de thème <code>&lt;mot&gt;-&lt;timestamp&gt;</code>",
+        "Tous les <code>ai1wm-backups/</code> et <code>uploads/backup/</code> (ne jamais restaurer depuis)",
+      ]},
+      { h: "2.2 — Chasse à la persistance (la phase qu'on saute toujours)", items: [
+        "<code>wp-content/mu-plugins/</code> — invisibles dans wp-admin, cachette n°1",
+        "Tâches cron (<code>wp_options → cron</code>) — cause des réapparitions",
+        "Comptes admin frauduleux + trous d'ID",
+        "Application Passwords (survivent au reset de mot de passe)",
+        "<code>wp_options</code> autoloaded (payload en base)",
+        "<code>functions.php</code> du thème actif (eval, base64_decode, gzinflate…)",
+        "<code>.htaccess</code> racine + uploads (redirections / cloaking)",
+        "Clés API et tokens en base → tous à régénérer (considérés fuités)",
+      ]},
+      { h: "2.3 — Invalidation globale des sessions", items: [
+        "Régénérer les 8 salts de <code>wp-config.php</code>",
+        "Changer les mots de passe de tous les comptes admin",
+        "Changer le mot de passe de la base de données (+ report dans wp-config)",
+      ]},
+      { h: "2.4 — Est-ce que ça repousse ?", items: [
+        "Attendre 48 h",
+        "<code>mb-remediation report --all --diff</code> → comparer au run précédent",
+        { t: "🔴 Si un fichier réapparaît → l'accès n'est PAS fermé. Retour Phase 0.", stop: true },
+      ]},
+    ]
+  },
+  {
+    id: "p3", num: "3", title: "Reconstruction propre (catégorie A)", when: "le gros du travail",
+    tag: "tool",
+    lead: "Pour les 9 sites de catégorie A, site par site. L'outil dit où c'est sale et vérifie après — il ne rend pas le nettoyage chirurgical sûr. Priorité : poeles-cheminees.com et prod.baycake.fr.",
+    groups: [
+      { h: "Par site (catégorie A)", items: [
+        "Cœur WP — réinstallé depuis wordpress.org (pas depuis une sauvegarde)",
+        "Extensions — réinstallées depuis la source officielle. Zéro nulled. Racheter les licences",
+        "Thème — source officielle. Thème enfant custom → relu ligne par ligne",
+        "<code>wp-config.php</code> — réécrit de zéro depuis <code>wp-config-sample.php</code>",
+        "<code>uploads/</code> — scanné avant remontée (supprimer .php/.phtml/.htaccess, inspecter SVG)",
+        "Base de données — conservée, nettoyée (comptes, wp_options, spam, liens sortants)",
+        "PHP 8.2+",
+        "Remise en ligne uniquement après Annexe A intégralement verte",
+      ]},
+    ]
+  },
+  {
+    id: "p4", num: "4", title: "Restructuration (le correctif de fond)", when: "sans quoi l'incident se reproduit",
+    tag: "manual",
+    lead: "C'est l'architecture qui a permis à un site de faire tomber les 24 autres.",
+    groups: [
+      { h: "4.1 — Isolation", items: [
+        "Un hébergement (ou au moins un utilisateur système) par client",
+        "Si mutualisé conservé : un compte FTP par site, chrooté. Jamais de FTP sur /",
+        "Désactiver SSH une fois le nettoyage terminé (réactivation ponctuelle, par IP)",
+      ]},
+      { h: "4.2 — Durcissement", items: [
+        "Wordfence ou Solid Security partout",
+        "2FA obligatoire sur tous les comptes admin",
+        "Interdire l'exécution PHP dans <code>uploads</code>",
+        "<code>DISALLOW_FILE_EDIT</code> → true",
+        "Un compte admin nominatif par personne. Zéro compte partagé/admin",
+        "Supprimer extensions et thèmes inutilisés",
+      ]},
+      { h: "4.3 — Sauvegardes", items: [
+        "Externalisées, hors du compte d'hébergement",
+        "Rétention ≥ 90 jours (remonter avant l'infection)",
+        "Tester une restauration au moins une fois",
+      ]},
+      { h: "4.4 — Politique interne MB Agency", items: [
+        "Interdiction formelle des plugins nulled. Sans exception",
+        "Gestionnaire de mots de passe partagé (Bitwarden / 1Password)",
+        "Process de patch mensuel documenté",
+        "<code>mb-remediation</code> en cron hebdomadaire (monitoring continu)",
+      ]},
+    ]
+  },
+  {
+    id: "p5", num: "5", title: "Obligations légales et clients", when: "en parallèle, pas après",
+    tag: "legal",
+    lead: "Le délai court depuis la prise de connaissance. À mener en même temps que les phases techniques.",
+    groups: [
+      { h: "À traiter", items: [
+        "Évaluer la notification CNIL (violation RGPD possible — délai 72 h). Faire valider par un juriste",
+        "Informer les clients concernés, factuellement, sans minimiser",
+        "Vérifier ton statut de sous-traitant RGPD → obligations envers le responsable de traitement",
+        "Prévenir l'assurance RC Pro",
+        "Conserver le journal d'incident (preuve de diligence)",
+      ]},
+    ]
+  },
+  {
+    id: "p6", num: "6", title: "Surveillance (l'outil devient permanent)", when: "monitoring continu",
+    tag: "tool",
+    lead: "C'est ici que l'investissement dans l'outil est rentabilisé.",
+    groups: [
+      { h: "En continu", items: [
+        "<code>mb-remediation report --all --diff</code> en cron hebdomadaire, alerte mail sur différence",
+        "Scans à J+2, J+7, J+30",
+        "Alerte : nouveau .php hors MAJ, nouveau compte admin, nouvelle cron, checksum cassé",
+        "Google Search Console par site : spam indexé + onglet Sécurité",
+        "Vérifier le cloaking (user-agent Googlebot)",
+        "Vérifier les blacklists (Google Safe Browsing, Spamhaus)",
+      ]},
+    ]
+  },
+];
+
+const STORAGE_KEY = "mb-remediation-progress-v1";
+const tagLabel = { manual: "À la main", tool: "Outillé", legal: "Légal" };
+
+function loadState() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
+  catch (e) { return {}; }
+}
+let state = loadState();
+
+// seed default-done items once
+DATA.forEach(p => p.groups.forEach((g, gi) => g.items.forEach((it, ii) => {
+  const key = p.id + ":" + gi + ":" + ii;
+  if (typeof it === "object" && it.done && !(key in state)) state[key] = true;
+})));
+
+function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+
+function itemText(it) { return typeof it === "string" ? it : it.t; }
+function isStop(it) { return typeof it === "object" && it.stop; }
+
+function phaseCounts(p) {
+  let total = 0, done = 0;
+  p.groups.forEach((g, gi) => g.items.forEach((it, ii) => {
+    total++;
+    if (state[p.id + ":" + gi + ":" + ii]) done++;
+  }));
+  return { total, done };
+}
+
+function render() {
+  const phasesEl = document.getElementById("phases");
+  phasesEl.innerHTML = "";
+
+  DATA.forEach(p => {
+    const { total, done } = phaseCounts(p);
+    const complete = done === total;
+
+    const details = document.createElement("details");
+    details.className = "phase" + (p.crit ? " crit" : "");
+    details.open = !!p._open;
+    details.dataset.id = p.id;
+
+    const summary = document.createElement("summary");
+    summary.innerHTML = `
+      <span class="caret">▶</span>
+      <span class="ph-title"><span class="num">${p.num}</span>${p.title}
+        <span class="ph-when"> · ${p.when}</span></span>
+      <span class="ph-meta">
+        <span class="tag ${p.tag}">${tagLabel[p.tag]}</span>
+        <span class="count">${done}/${total}</span>
+      </span>`;
+    details.appendChild(summary);
+
+    const body = document.createElement("div");
+    body.className = "body";
+    let html = `<p class="lead${p.leadAlert ? " alert" : ""}">${p.lead}</p>`;
+    p.groups.forEach((g, gi) => {
+      html += `<div class="group"><h4>${g.h}</h4><ul class="checks">`;
+      g.items.forEach((it, ii) => {
+        const key = p.id + ":" + gi + ":" + ii;
+        const checked = !!state[key];
+        if (isStop(it)) {
+          html += `<li><div class="note stop">${itemText(it)}</div></li>`;
+          return;
+        }
+        html += `<li><label class="check${checked ? " done" : ""}">
+          <input type="checkbox" data-key="${key}" ${checked ? "checked" : ""}>
+          <span>${itemText(it)}</span></label></li>`;
+      });
+      html += `</ul></div>`;
+    });
+    body.innerHTML = html;
+    details.appendChild(body);
+    phasesEl.appendChild(details);
+
+    details.addEventListener("toggle", () => { p._open = details.open; });
+  });
+
+  phasesEl.querySelectorAll("input[type=checkbox]").forEach(cb => {
+    cb.addEventListener("change", () => {
+      state[cb.dataset.key] = cb.checked;
+      saveState();
+      updateComputed();
+      const lbl = cb.closest("label");
+      lbl.classList.toggle("done", cb.checked);
+      // update the phase count in-place
+      const det = cb.closest("details");
+      const p = DATA.find(x => x.id === det.dataset.id);
+      const { total, done } = phaseCounts(p);
+      det.querySelector(".count").textContent = done + "/" + total;
+    });
+  });
+
+  updateComputed();
+}
+
+function updateComputed() {
+  // global
+  let gTotal = 0, gDone = 0;
+  DATA.forEach(p => { const c = phaseCounts(p); gTotal += c.total; gDone += c.done; });
+  const pct = gTotal ? Math.round(gDone / gTotal * 100) : 0;
+  document.getElementById("globalPct").textContent = pct + " %";
+  const gbar = document.getElementById("globalBar");
+  gbar.querySelector("i").style.width = pct + "%";
+  gbar.classList.toggle("ok", pct === 100);
+
+  // timeline chips
+  const tl = document.getElementById("timeline");
+  tl.innerHTML = "";
+  let currentPhase = null;
+  DATA.forEach(p => {
+    const c = phaseCounts(p);
+    const complete = c.done === c.total;
+    if (!currentPhase && !complete) currentPhase = p;
+    const chip = document.createElement("div");
+    chip.className = "chip" + (complete ? " done" : "");
+    chip.innerHTML = `<span class="dot"></span>Phase ${p.num}<span class="mini">${c.done}/${c.total}</span>`;
+    chip.addEventListener("click", () => {
+      const det = document.querySelector(`details.phase[data-id="${p.id}"]`);
+      if (det) { det.open = true; p._open = true; det.scrollIntoView({ behavior: "smooth", block: "start" }); }
+    });
+    tl.appendChild(chip);
+    chip._phaseId = p.id;
+  });
+
+  // current phase banner
+  const banner = document.getElementById("currentBanner");
+  const nameEl = document.getElementById("currentName");
+  const hintEl = document.getElementById("currentHint");
+  if (!currentPhase) {
+    banner.classList.remove("blocking");
+    nameEl.innerHTML = `✅ <b style="color:var(--ok)">Toutes les phases terminées</b>`;
+    hintEl.textContent = "Garde la Phase 6 (surveillance) active en continu.";
+  } else {
+    const blocking = currentPhase.id === "p0";
+    banner.classList.toggle("blocking", blocking);
+    nameEl.innerHTML = `<b>Phase ${currentPhase.num}</b> — ${currentPhase.title}`;
+    hintEl.textContent = blocking
+      ? "⚠️ Phase bloquante : tant qu'elle n'est pas terminée, la porte reste ouverte. On ne nettoie rien avant."
+      : currentPhase.lead;
+    // mark active chip
+    [...tl.children].forEach(ch => ch.classList.toggle("active", ch._phaseId === currentPhase.id));
+  }
+}
+
+document.getElementById("resetBtn").addEventListener("click", () => {
+  if (confirm("Réinitialiser toute la progression ? Cette action est irréversible.")) {
+    state = {};
+    // re-seed defaults
+    DATA.forEach(p => p.groups.forEach((g, gi) => g.items.forEach((it, ii) => {
+      if (typeof it === "object" && it.done) state[p.id + ":" + gi + ":" + ii] = true;
+    })));
+    saveState();
+    DATA.forEach(p => p._open = false);
+    render();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+});
+
+document.getElementById("collapseAll").addEventListener("click", () => {
+  const anyOpen = DATA.some(p => p._open);
+  DATA.forEach(p => p._open = !anyOpen);
+  document.getElementById("collapseAll").textContent = anyOpen ? "Tout déplier" : "Tout replier";
+  render();
+});
+
+// open the current (first incomplete) phase by default
+(function initOpen() {
+  let opened = false;
+  for (const p of DATA) {
+    const c = phaseCounts(p);
+    if (c.done !== c.total) { p._open = true; opened = true; break; }
+  }
+  if (!opened) DATA[DATA.length - 1]._open = true;
+})();
+
+render();
+</script>
+</body>
+</html>
