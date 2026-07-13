@@ -175,6 +175,7 @@ class Config:
     backup_dir: Path
     operator: str
     wp_bin: str
+    home: str = ""
     sites: list[Site] = field(default_factory=list)
 
     @classmethod
@@ -198,6 +199,7 @@ class Config:
             backup_dir=Path(os.path.expanduser(str(data.get("backup_dir", "~/mb-backups")))),
             operator=str(data.get("operator", os.environ.get("USER", "?"))),
             wp_bin=str(data.get("wp_bin", "wp")),
+            home=str(data.get("home", "")),
             sites=sites,
         )
 
@@ -583,6 +585,154 @@ def module_persistence(ssh: SSH, site: Site, deep: bool = False) -> dict:
 
 
 # --------------------------------------------------------------------------- #
+# Découverte des installations WordPress (home-wide, lecture seule)             #
+# --------------------------------------------------------------------------- #
+
+def module_discover(ssh: SSH, home: str) -> list[dict]:
+    if not home:
+        sys.exit("Renseigne `home:` dans la config pour utiliser `discover`.")
+    qhome = shlex.quote(home)
+    rc, out, _ = ssh.run(f"find {qhome} -maxdepth 6 -name wp-config.php -type f 2>/dev/null")
+    roots = sorted({posixpath.dirname(l) for l in out.splitlines() if l.strip()})
+    found = []
+    for r in roots:
+        rc, ver, _ = ssh.run(
+            f"{shlex.quote(ssh.cfg.wp_bin)} --path={shlex.quote(r)} "
+            f"--skip-themes --skip-plugins core version 2>/dev/null")
+        name = posixpath.basename(r.rstrip("/")) or r
+        found.append({"name": name, "path": r, "wp_version": ver.strip() or "?"})
+    return found
+
+
+# --------------------------------------------------------------------------- #
+# Scan home-wide (tâches 1 & 2 du brief : webshells + cron, lecture seule)      #
+# --------------------------------------------------------------------------- #
+
+def _decode_ts_in(path: str) -> Optional[dict]:
+    m = TS_RE.search(posixpath.basename(path))
+    if m:
+        ts = int(m.group(1))
+        return {"path": path, "timestamp": ts, "date": unix_ts_to_date(ts)}
+    return {"path": path}
+
+
+def module_scan(ssh: SSH, home: str) -> dict:
+    """Chasse au webshell / persistance sur tout le home. LECTURE SEULE."""
+    if not home:
+        sys.exit("Renseigne `home:` dans la config pour utiliser `scan`.")
+    qh = shlex.quote(home)
+    res: dict[str, Any] = {"home": home, "generated": now_utc().isoformat()}
+
+    def lines(cmd: str, limit: int = 500) -> list[str]:
+        rc, out, _ = ssh.run(cmd)
+        return [l for l in out.splitlines() if l.strip()][:limit]
+
+    # 1. PHP récemment modifiés (14 j = fenêtre chaude)
+    res["recent_php_14d"] = lines(
+        f"find {qh} -type f -name '*.php' -mtime -14 -printf '%TY-%Tm-%Td %p\\n' 2>/dev/null | sort")
+    # 2. marqueurs de webshell
+    wpat = (r'eval\(|base64_decode\(|gzinflate\(|str_rot13\(|assert\(|system\(|'
+            r'shell_exec\(|passthru\(|popen\(|proc_open\(|\$_(GET|POST|REQUEST|COOKIE)\[')
+    wpat_q = shlex.quote(wpat)
+    res["webshell_markers"] = [ _decode_ts_in(p) for p in lines(
+        f"grep -rIlE {wpat_q} --include='*.php' {qh} 2>/dev/null") ]
+    # 2b. preg_replace /e
+    preg_q = shlex.quote(r"preg_replace[[:space:]]*\([^)]*/e")
+    res["preg_replace_e"] = lines(
+        f"grep -rIlE {preg_q} --include='*.php' {qh} 2>/dev/null")
+    # 2c. webshells nommés
+    res["known_shells"] = lines(
+        f"grep -rIlE {shlex.quote('FilesMan|WSOshell|c99sh|r57shell|Liar|MiniShell|b374k|phpspy')} --include='*.php' {qh} 2>/dev/null")
+    # 3a. php dans uploads
+    res["php_in_uploads"] = [ _decode_ts_in(p) for p in lines(
+        f"find {qh} -type f \\( -name '*.php' -o -name '*.phtml' -o -name '*.pht' \\) -path '*/uploads/*' 2>/dev/null") ]
+    # 3b. fichiers à nom de timestamp
+    res["timestamped_files"] = [ _decode_ts_in(p) for p in lines(
+        f"find {qh} -type f -name '*_1[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9].php' 2>/dev/null") ]
+    # 3c. dossiers de thème à nom généré
+    res["generated_theme_dirs"] = [ _decode_ts_in(p) for p in lines(
+        f"find {qh} -type d -path '*/themes/*' -regextype posix-extended -regex '.*[-_]1[0-9]{{9}}$' 2>/dev/null") ]
+    # 3d. artefacts connus
+    known = []
+    for pat in ("Liar-Console.php", "all-in-one-wp-migration", "ai1wm-backups", "_quarantaine_*"):
+        known += lines(f"find {qh} -maxdepth 8 -name {shlex.quote(pat)} 2>/dev/null", limit=100)
+    res["known_artifacts"] = known
+    # 4. mu-plugins
+    res["mu_plugins"] = [ _decode_ts_in(p) for p in lines(
+        f"find {qh} -type f -path '*/mu-plugins/*.php' 2>/dev/null") ]
+    # 5. crontab
+    rc, cron, _ = ssh.run("crontab -l 2>/dev/null")
+    res["crontab"] = [l for l in cron.splitlines() if l.strip() and not l.startswith("#")]
+    # 6. .htaccess suspects
+    res["htaccess_suspicious"] = lines(
+        f"grep -rIlE {shlex.quote('RewriteRule.*(https?://|base64|eval)|AddType.*php|auto_(prepend|append)_file')} --include='.htaccess' {qh} 2>/dev/null")
+
+    # datation des vagues
+    waves: dict[str, int] = {}
+    for group in ("webshell_markers", "php_in_uploads", "timestamped_files",
+                  "generated_theme_dirs", "mu_plugins"):
+        for item in res[group]:
+            if isinstance(item, dict) and "date" in item:
+                waves[item["date"]] = waves.get(item["date"], 0) + 1
+    res["waves_by_date"] = dict(sorted(waves.items()))
+
+    # score de gravité
+    res["counts"] = {
+        "webshell_markers": len(res["webshell_markers"]),
+        "php_in_uploads": len(res["php_in_uploads"]),
+        "timestamped_files": len(res["timestamped_files"]),
+        "generated_theme_dirs": len(res["generated_theme_dirs"]),
+        "known_artifacts": len(res["known_artifacts"]),
+        "mu_plugins": len(res["mu_plugins"]),
+        "htaccess_suspicious": len(res["htaccess_suspicious"]),
+        "crontab_entries": len(res["crontab"]),
+    }
+    res["suspicious_total"] = (res["counts"]["php_in_uploads"] +
+                               res["counts"]["timestamped_files"] +
+                               res["counts"]["generated_theme_dirs"] +
+                               res["counts"]["known_artifacts"])
+    return res
+
+
+def scan_to_markdown(res: dict) -> str:
+    c = res["counts"]
+    lines = [f"# Scan home-wide — {res['home']}", f"_Généré : {res['generated']}_", ""]
+    if res["waves_by_date"]:
+        w = ", ".join(f"{d} ({n})" for d, n in res["waves_by_date"].items())
+        lines += [f"**Vagues datées :** {w}", ""]
+    lines += ["## Compteurs",
+              f"- Marqueurs webshell : {c['webshell_markers']}",
+              f"- PHP dans uploads : {c['php_in_uploads']}  ⟵ jamais légitime",
+              f"- Fichiers à timestamp : {c['timestamped_files']}",
+              f"- Dossiers thème générés : {c['generated_theme_dirs']}",
+              f"- Artefacts connus : {c['known_artifacts']}",
+              f"- mu-plugins : {c['mu_plugins']}",
+              f"- .htaccess suspects : {c['htaccess_suspicious']}",
+              f"- Entrées crontab : {c['crontab_entries']}", ""]
+    def section(title, items, key="path"):
+        if not items:
+            return
+        lines.append(f"## {title} ({len(items)})")
+        for it in items[:100]:
+            if isinstance(it, dict):
+                d = f"  ⟵ {it['date']}" if "date" in it else ""
+                lines.append(f"- `{it[key]}`{d}")
+            else:
+                lines.append(f"- `{it}`")
+        lines.append("")
+    section("PHP dans uploads", res["php_in_uploads"])
+    section("Fichiers à nom de timestamp", res["timestamped_files"])
+    section("Dossiers de thème générés", res["generated_theme_dirs"])
+    section("Artefacts connus", [{"path": p} for p in res["known_artifacts"]])
+    section("mu-plugins (à relire)", res["mu_plugins"])
+    section("Marqueurs webshell dans le code", res["webshell_markers"])
+    section(".htaccess suspects", [{"path": p} for p in res["htaccess_suspicious"]])
+    if res["crontab"]:
+        lines += ["## Crontab", *[f"- `{l}`" for l in res["crontab"]], ""]
+    return "\n".join(lines) + "\n"
+
+
+# --------------------------------------------------------------------------- #
 # Rapport (module 6) : checklist Annexe A par site                              #
 # --------------------------------------------------------------------------- #
 
@@ -940,6 +1090,9 @@ def build_parser() -> argparse.ArgumentParser:
         if not destructive:
             sp.add_argument("--all", action="store_true", help="Tous les sites")
 
+    sub.add_parser("discover", help="Trouve toutes les installations WordPress sous `home` (lecture seule)")
+    sub.add_parser("scan", help="Chasse au webshell/cron sur tout le home (lecture seule)")
+
     for name in ("inventory", "checksums", "signatures", "persistence", "report"):
         sp = sub.add_parser(name, help=f"Module lecture seule : {name}")
         add_site_selectors(sp)
@@ -1017,6 +1170,36 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     # commandes nécessitant SSH
     with SSH(cfg) as ssh:
+        if args.command == "discover":
+            found = module_discover(ssh, cfg.home)
+            human(f"{len(found)} installation(s) WordPress trouvée(s) sous {cfg.home} :", "ok")
+            print("\nsites:")
+            for f in found:
+                print(f"  - {{name: {f['name']}, path: {f['path']}, category: '?'}}"
+                      f"   # WP {f['wp_version']}")
+            out_dir.mkdir(parents=True, exist_ok=True)
+            (out_dir / "_discover.json").write_text(
+                json.dumps(found, ensure_ascii=False, indent=2), encoding="utf-8")
+            return 0
+
+        if args.command == "scan":
+            res = module_scan(ssh, cfg.home)
+            out_dir.mkdir(parents=True, exist_ok=True)
+            (out_dir / "_scan.json").write_text(
+                json.dumps(res, ensure_ascii=False, indent=2), encoding="utf-8")
+            (out_dir / "_scan.md").write_text(scan_to_markdown(res), encoding="utf-8")
+            c = res["counts"]
+            human(f"Scan terminé. {res['suspicious_total']} artefact(s) hautement suspect(s).",
+                  "err" if res["suspicious_total"] else "ok")
+            for k, v in c.items():
+                human(f"  {k}: {v}", "warn" if v else "info")
+            if res["waves_by_date"]:
+                human("  Vagues datées : " +
+                      ", ".join(f"{d} ({n})" for d, n in res["waves_by_date"].items()), "warn")
+            human(f"→ rapport : {out_dir/'_scan.md'}", "ok")
+            log.write("scan", home=cfg.home, suspicious_total=res["suspicious_total"])
+            return 0
+
         if args.command in READ_ONLY:
             sites = cfg.select(args.site, getattr(args, "all", False))
             if not sites:

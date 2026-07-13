@@ -8,12 +8,15 @@
 # ============================================================================
 
 ssh:
-  host: 1234.ftp.infomaniak.com   # hôte SSH Infomaniak
+  host: d56bh5.ftp.infomaniak.com   # hôte SSH Infomaniak (compte MB1)
   port: 22
-  user: d56bh5_mbagency           # le NOUVEAU compte (après rotation Phase 0)
-  # Chemin vers ta clé privée. Laisse vide pour utiliser l'agent SSH.
+  user: d56bh5_nico                 # le compte perso créé en Phase 0
+  # Chemin vers ta clé privée. Laisse vide pour utiliser l'agent SSH ou le mot de passe.
   ssh_key_path: ~/.ssh/id_ed25519
   # ssh_key_passphrase_env: MB_SSH_PASSPHRASE   # variable d'env, jamais en dur
+
+# Home mutualisé partagé (contient les ~20 sites). Utilisé par `discover` et `scan`.
+home: /home/clients/d01402ab7c02fcaba40ceb7062ebd71c
 
 # Où sont écrits les snapshots (module backup). JAMAIS sur l'hébergement.
 backup_dir: ~/mb-backups
@@ -25,8 +28,14 @@ operator: nicolas
 wp_bin: wp
 
 # ----------------------------------------------------------------------------
-# Les 25 sites. `path` = racine WordPress (là où se trouve wp-config.php).
+# Les sites. `path` = racine WordPress (là où se trouve wp-config.php).
 # `category` (A/B/C/D) est indicatif, repris du runbook.
+#
+# ⚠️ La liste ci-dessous vient du runbook initial (25 sites). L'environnement
+# réel compte ~20 sites, dont certains absents d'ici (aude-pompes-funebres.fr,
+# lecrindelacite.com…). Pour générer la vraie liste automatiquement :
+#     python3 mb_remediation.py discover     # trouve tous les wp-config.php
+# puis remplace le bloc `sites:` par ce que la commande te propose.
 # ----------------------------------------------------------------------------
 sites:
   # --- Catégorie A : reconstruction complète (webshell) ---

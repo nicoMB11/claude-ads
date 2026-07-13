@@ -22,9 +22,38 @@ Dans `sites.yaml` : hôte SSH, **le nouveau compte** (après rotation Phase 0),
 le chemin de ta **clé SSH** (aucun mot de passe en dur), et la racine WordPress
 (`path`) de chaque site. `sites.yaml` est git-ignoré : ne le committe jamais.
 
+## Le plus urgent, sans rien installer : le scan lecture seule
+
+Pour la **chasse au webshell (tâche 1)** et le **cron (tâche 2)**, tu n'as même
+pas besoin de Python. Lance le script depuis ta machine, capture le rapport en
+local :
+
+```bash
+ssh d56bh5_nico@d56bh5.ftp.infomaniak.com 'bash -s' < scan-webshells.sh \
+    > scan_$(date +%F).txt 2>&1
+```
+
+100 % lecture seule (aucune modification), il liste : PHP récemment modifiés,
+marqueurs de webshell, PHP dans `uploads`, fichiers/dossiers à nom de timestamp
+(datés automatiquement), mu-plugins, crontab, `.htaccess` suspects.
+
+Les mêmes hunts sont intégrés à l'outil (ci-dessous) via `scan`, avec sortie
+JSON + Markdown.
+
 ## Ordre d'utilisation (imposé par le runbook)
 
-**1. Le filet d'abord — snapshot avant de toucher à quoi que ce soit :**
+**0. Découverte + scan (lecture seule, home entier — commence par là) :**
+
+```bash
+python3 mb_remediation.py discover   # trouve tous les wp-config.php → liste YAML
+python3 mb_remediation.py scan       # webshells + cron sur tout le home → mb-out/_scan.md
+```
+
+`discover` te génère le bloc `sites:` à coller dans `sites.yaml` (utile : ton
+environnement compte ~20 sites aux chemins inconnus). `scan` produit un rapport
+daté (`mb-out/_scan.md` + `_scan.json`).
+
+**1. Le filet — snapshot avant de toucher à quoi que ce soit :**
 
 ```bash
 # dry-run par défaut : montre ce qui serait fait
@@ -82,6 +111,8 @@ SSH oubliée) → retour Phase 0.
 
 | Module | Rôle | Destructif ? |
 |---|---|---|
+| `discover` | Trouve toutes les installations WordPress sous `home` → bloc `sites:` prêt à coller. | non |
+| `scan` | Chasse au webshell/cron sur **tout le home** (marqueurs, PHP dans uploads, timestamps datés, mu-plugins, crontab, .htaccess). | non |
 | `backup` | Snapshot fichiers (tar.gz) + BDD (`wp db export`) + manifeste SHA-256 + méta. Typé **INFECTE / ENCOURS / VERIFIE**. | non (écrit en local) |
 | `verify` | Contrôle d'intégrité d'un snapshot (archive ouvrable, dump non tronqué, manifeste cohérent). | non |
 | `diff` | Compare l'état actuel d'un site à un snapshot → ce qui a changé. | non |
