@@ -1,0 +1,49 @@
+# mb-catalog — the single clean source of truth for your fleet's engine code.
+#
+# Free items are fetched from wordpress.org on demand. Premium items are ZIPs
+# you placed once, from the VENDOR account (never harvested from a live site).
+#
+# Licence keys NEVER appear here. Only the NAME of the env var that holds the
+# value (license_key_env). Values live in a git-ignored .env — see .env.example.
+
+plugins:
+  - slug: elementor
+    kind: plugin
+    type: free
+    source: wordpress.org
+    latest: "3.30.0"
+
+  - slug: elementor-pro
+    kind: plugin
+    type: premium
+    file: elementor-pro-3.30.0.zip     # placed under premium/
+    license_key_env: ELEMENTOR_PRO_LICENSE
+    activation: api                    # activates via the vendor API
+    license_sites: 5                   # slots this plan covers (Point de vigilance n°4)
+
+  - slug: seopress
+    kind: plugin
+    type: free
+    source: wordpress.org
+    latest: "8.9"
+
+  - slug: wp-seopress-pro
+    kind: plugin
+    type: premium
+    file: seopress-pro-8.9.zip
+    license_key_env: SEOPRESS_PRO_LICENSE
+    activation: key                    # key goes in a field, automatable
+    license_sites: 999
+
+  - slug: woocommerce
+    kind: plugin
+    type: free
+    source: wordpress.org
+    latest: "9.9.0"
+
+themes:
+  - slug: hello-elementor
+    kind: theme
+    type: free
+    source: wordpress.org
+    latest: "3.4.2"

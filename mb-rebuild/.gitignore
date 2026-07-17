@@ -1,0 +1,22 @@
+# Secrets — never commit real licence keys.
+.env
+.env.*
+!.env.example
+
+# The operator's private catalogue of official ZIPs (kept in its own private
+# store, not in this tool's repo).
+mb-catalog/
+!examples/
+
+# Local snapshots / staging produced at runtime.
+mb-work/
+*.sql
+*.sql.part
+
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+build/
+dist/

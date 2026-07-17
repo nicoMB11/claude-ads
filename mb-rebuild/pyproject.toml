@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mb-rebuild"
+version = "0.1.0"
+description = "Rebuild clean WordPress sites from official sources (engine replaced, content preserved and cleaned)."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "M-B Agency" }]
+dependencies = [
+    "PyYAML>=6.0,<7.0",
+    "requests>=2.32.0,<3.0.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0,<9.0"]
+
+[project.scripts]
+mb-rebuild = "mb_rebuild.cli:main"
+
+[tool.setuptools]
+packages = ["mb_rebuild"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
