@@ -67,3 +67,31 @@ def test_site_config_roundtrip():
     assert cfg.site == "s.com"
     assert cfg.plugins == ["elementor"]
     assert cfg.theme == "hello-elementor"
+
+
+def test_detection_carries_table_prefix():
+    det = Detection(site="x.com", table_prefix="wp_abc_")
+    assert det.to_site_config()["table_prefix"] == "wp_abc_"
+
+
+def test_site_config_reads_table_prefix():
+    cfg = SiteConfig.from_dict({"site": "s.com", "table_prefix": "wp_xyz_"})
+    assert cfg.table_prefix == "wp_xyz_"
+
+
+def test_manual_steps_include_infomaniak_and_gsc():
+    from mb_rebuild.build import manual_steps
+
+    steps = manual_steps("poeles.com")
+    joined = "\n".join(steps)
+    assert "Infomaniak" in joined
+    assert "DNS" in joined
+    assert "Search Console" in joined
+    assert "2FA" in joined
+
+
+def test_manual_steps_flag_preview_removal_when_set():
+    from mb_rebuild.build import manual_steps
+
+    steps = manual_steps("poeles.com", preview_url="https://preprod.example.com")
+    assert any("REMOVE the preview override" in s for s in steps)

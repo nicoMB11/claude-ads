@@ -148,13 +148,43 @@ def cmd_db_import(args) -> int:
         findings,
         admin_whitelist=_split(args.admin_whitelist),
         remove_users=args.remove_users,
+        reassign_to=args.reassign_to,
+        search_replace=_parse_search_replace(args.search_replace),
     )
+    return 0
+
+
+def _parse_search_replace(pairs: list[str] | None) -> list[tuple[str, str]]:
+    """Turn ['old,new', ...] into [(old, new), ...] for wp search-replace."""
+    out: list[tuple[str, str]] = []
+    for pair in pairs or []:
+        if "," not in pair:
+            from .utils import MbError
+
+            raise MbError(f"--search-replace expects 'OLD,NEW', got: {pair!r}")
+        old, new = pair.split(",", 1)
+        out.append((old.strip(), new.strip()))
+    return out
+
+
+def cmd_preview(args) -> int:
+    from .build import clear_preview, set_preview
+
+    remote = _remote(args, "target")
+    if args.clear:
+        clear_preview(remote)
+    elif args.url:
+        set_preview(remote, args.url)
+    else:
+        from .utils import MbError
+
+        raise MbError("pass --url <preview-url> to set, or --clear to remove")
     return 0
 
 
 def cmd_build(args) -> int:
     from . import catalog as cat_mod
-    from .build import SiteConfig, build
+    from .build import DbConfig, SiteConfig, build
     from .utils import read_yaml
 
     cat = cat_mod.load_catalog(args.catalog)
@@ -162,6 +192,18 @@ def cmd_build(args) -> int:
     env_file = load_env_file(args.env_file)
     remote = _remote(args, "target")
     os.makedirs(args.workdir, exist_ok=True)
+
+    # DB config: only generate a fresh wp-config if creds are supplied. The
+    # table prefix comes from the CLI, else the detected value in site-config.
+    db = None
+    if args.db_name:
+        db = DbConfig(
+            name=args.db_name,
+            user=args.db_user,
+            password=args.db_pass or "",
+            host=args.db_host,
+            table_prefix=args.table_prefix or cfg.table_prefix,
+        )
 
     rep = build(
         remote,
@@ -171,6 +213,9 @@ def cmd_build(args) -> int:
         wp_version=args.wp_version,
         source_uploads=args.source_uploads,
         staging_dir=args.workdir,
+        db=db,
+        preview_url=args.preview_url,
+        auto_update_core=args.auto_update_core,
     )
     print(rep.render())
     if args.report:
@@ -242,6 +287,11 @@ def build_parser() -> argparse.ArgumentParser:
     di.add_argument("--workdir", default="mb-work", help="local snapshot directory")
     di.add_argument("--admin-whitelist", help="comma-separated allowed admin logins")
     di.add_argument("--remove-users", action="store_true", help="delete rogue admins (destructive)")
+    di.add_argument("--reassign-to", default="1", help="user login/ID to inherit deleted users' posts (default: 1)")
+    di.add_argument(
+        "--search-replace", action="append", metavar="OLD,NEW",
+        help="serialization-safe domain rewrite (repeatable), e.g. https://old.com,https://new.com",
+    )
     di.add_argument("--yes", action="store_true", help="confirm import after reviewing the scan")
     _add_write_flags(di)
     di.set_defaults(func=cmd_db_import)
@@ -252,12 +302,29 @@ def build_parser() -> argparse.ArgumentParser:
     b.add_argument("--site", required=True, help="path to site-config.yml")
     b.add_argument("--target", required=True, help="user@host:/path of the NEW site")
     b.add_argument("--port", type=int, help="SSH port")
-    b.add_argument("--wp-version", help="pin a WordPress core version")
+    b.add_argument("--wp-version", help="pin a WordPress core version (e.g. 6.9)")
     b.add_argument("--source-uploads", help="user@host:/path/wp-content/uploads to rapatriate")
     b.add_argument("--workdir", default="mb-work", help="local staging directory")
     b.add_argument("--report", help="write the compliance report here")
+    b.add_argument("--preview-url", help="set WP_HOME/WP_SITEURL for preprod (remove at cutover)")
+    b.add_argument("--auto-update-core", action="store_true", help="allow core auto-updates (default: off)")
+    b.add_argument("--db-name", help="target DB name (generates a fresh wp-config)")
+    b.add_argument("--db-user", help="target DB user")
+    b.add_argument("--db-pass", help="target DB password (masked in all output)")
+    b.add_argument("--db-host", default="localhost", help="target DB host (default: localhost)")
+    b.add_argument("--table-prefix", help="table prefix; overrides the value detected in site-config")
     _add_write_flags(b)
     b.set_defaults(func=cmd_build)
+
+    # preview — set/clear the WP_HOME/WP_SITEURL override (cutover hygiene)
+    pv = sub.add_parser("preview", help="set or CLEAR the preview URL override")
+    _add_common(pv)
+    pv.add_argument("--target", required=True, help="user@host:/path of the site")
+    pv.add_argument("--port", type=int, help="SSH port")
+    pv.add_argument("--url", help="preview URL to pin (WP_HOME/WP_SITEURL)")
+    pv.add_argument("--clear", action="store_true", help="REMOVE the override (do this at cutover)")
+    _add_write_flags(pv)
+    pv.set_defaults(func=cmd_preview)
 
     return parser
 

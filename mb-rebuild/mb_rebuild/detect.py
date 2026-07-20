@@ -24,6 +24,7 @@ class Detection:
     theme: str | None = None
     theme_known: bool = False
     php: str | None = None
+    table_prefix: str | None = None
 
     def to_site_config(self) -> dict:
         cfg: dict = {"site": self.site, "plugins": self.known_plugins}
@@ -31,6 +32,8 @@ class Detection:
             cfg["theme"] = self.theme
         if self.php:
             cfg["php"] = self.php
+        if self.table_prefix:
+            cfg["table_prefix"] = self.table_prefix
         return cfg
 
 
@@ -69,6 +72,11 @@ def detect_source(remote: Remote, catalog: Catalog, *, site: str) -> Detection:
     if php_proc and php_proc.returncode == 0:
         det.php = (php_proc.stdout or "").strip() or None
 
+    # $table_prefix must be carried over — the imported DB depends on it.
+    prefix_proc = remote.wp(["config", "get", "table_prefix"], check=False)
+    if prefix_proc and prefix_proc.returncode == 0:
+        det.table_prefix = (prefix_proc.stdout or "").strip() or None
+
     return det
 
 
@@ -86,6 +94,8 @@ def report(det: Detection) -> Report:
         rep.add(label, det.theme)
     if det.php:
         rep.add("Detected PHP", det.php)
+    if det.table_prefix:
+        rep.add("Detected table_prefix (carried over to wp-config)", det.table_prefix)
     return rep
 
 

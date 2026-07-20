@@ -78,8 +78,18 @@ mb-rebuild detect --source deploy@ancien-site:/var/www/site \
 ### 3. `db-scan` / `db-import` — la base de données
 
 `db-scan` exporte la base de l'ancien site, la stocke (snapshot local horodaté) et la
-**scanne** : options autoloadées avec du code (`<?php`, `eval`, `base64`), cron, comptes
-admin hors liste blanche, application passwords, liens spam et scripts injectés.
+**scanne**. Détections durcies sur une vraie infection (playbook APC) :
+
+- options autoloadées avec du code (`<?php`, `eval`, `base64`) ;
+- **famille `sc_`** (scope-connector : auto-récupération, propagation) — sans jamais
+  confondre avec le plugin légitime `wpsc_` ;
+- **cron malveillant** `sc_cron_fetch` (intervalle custom `sc_interval`) ;
+- **décodage base64 AVANT scan** — un injecteur JS de cloaking était caché encodé en
+  base64 dans une option au **nom en hash MD5** ; tous les greps littéraux passaient à
+  côté. Signatures après décodage : `yadro`, `counter.yadro.ru`, `data:text/javascript`,
+  `bodyNode.remove` ;
+- toute option **autoloadée nommée par un hash MD5** (32 hex) ;
+- comptes admin hors liste blanche, application passwords, spam et scripts injectés.
 
 ```bash
 mb-rebuild db-scan --source deploy@ancien-site:/var/www/site \
@@ -87,14 +97,20 @@ mb-rebuild db-scan --source deploy@ancien-site:/var/www/site \
 ```
 
 `db-import` fait la même chose puis, **après ta validation** (`--yes`), importe dans la
-cible et auto-remédie ce qui est sûr (cron, options avec code, application passwords,
-et — sur demande `--remove-users` — les admins rogue). Le spam de contenu dans `wp_posts`
-est *signalé* pour revue manuelle, jamais réécrit (ça abîmerait le design à préserver).
+cible et auto-remédie ce qui est sûr (cron + `sc_cron_fetch`, options code/`sc_`/hash/
+cloaking, application passwords, et — sur demande `--remove-users` — les faux admins,
+**supprimés avec leur usermeta et leurs posts réattribués** à un compte légitime via
+`--reassign-to`). Il applique aussi le **remplacement de domaine** en mode sérialisation-safe
+(`wp search-replace`, indispensable avec Elementor). Le spam de contenu dans `wp_posts` est
+*signalé* pour revue manuelle, jamais réécrit.
 
 ```bash
 mb-rebuild db-import --source deploy@ancien:/var/www/site \
                      --target deploy@neuf:/var/www/site \
-                     --admin-whitelist admin --yes --apply
+                     --admin-whitelist admin --remove-users --reassign-to 1 \
+                     --search-replace 'https://ancien.com,https://preprod.example.com' \
+                     --search-replace 'http://www.ancien.com,https://preprod.example.com' \
+                     --yes --apply
 ```
 
 ### 4. `build` — la reconstruction (l'assemblage)
@@ -103,13 +119,37 @@ mb-rebuild db-import --source deploy@ancien:/var/www/site \
 mb-rebuild build --site site-config.yml \
                  --target deploy@neuf:/var/www/site \
                  --source-uploads deploy@ancien:/var/www/site/wp-content/uploads \
-                 --catalog mb-catalog --report compliance.md --apply
+                 --catalog mb-catalog \
+                 --wp-version 6.9 \
+                 --db-name wpdb --db-user wpuser --db-pass "$DB_PASS" \
+                 --preview-url https://preprod.example.com \
+                 --report compliance.md --apply
 ```
 
-Séquence : `wp core download` officiel → `wp-config` neuf (salts frais,
-`DISALLOW_FILE_EDIT`) → extensions du catalogue + licences depuis `.env` → thème → base
-nettoyée → `uploads/` rapatrié **et scanné** (tout `.php`/`.phtml` supprimé) → durcissement
-(Wordfence, inscriptions fermées) → rapport de conformité + rappels manuels (Search Console, DNS).
+Séquence : `wp core download` officiel (version **épinglable** via `--wp-version`) →
+`wp-config` neuf (**salts frais**, `$table_prefix` **repris de l'ancien site**,
+`DISALLOW_FILE_EDIT=true`, `WP_AUTO_UPDATE_CORE=false` — cas APC : un plugin premium
+ancien incompatible avec le WP majeur suivant, on reste maître des mises à jour) →
+extensions du catalogue + licences depuis `.env` → thème → base nettoyée → `uploads/`
+rapatrié **et scanné** (tout `.php`/`.phtml` supprimé) → durcissement (Wordfence,
+inscriptions fermées) → **override de preview** `WP_HOME`/`WP_SITEURL` (optionnel) →
+rapport de conformité avec **checklist des étapes manuelles restantes, site par site**.
+
+### `preview` — l'override de préproduction (hygiène de bascule)
+
+L'override `WP_HOME`/`WP_SITEURL` sert à valider sur une URL de préprod. **L'oubli
+classique**, c'est de ne pas le retirer à la bascule — d'où une commande dédiée :
+
+```bash
+mb-rebuild preview --target deploy@neuf:/var/www/site --url https://preprod.example.com --apply  # poser
+mb-rebuild preview --target deploy@neuf:/var/www/site --clear --apply                            # RETIRER à la bascule
+```
+
+### Étapes manuelles (hors périmètre CLI)
+
+Le rapport de fin liste, **pour chaque site**, ce que l'outil ne fait **pas** (phases
+E/F/G) : détacher/rattacher le domaine dans le **Manager Infomaniak**, bascule **DNS**,
+**SSL**, **Google Search Console**, **2FA**, et le retrait de l'override de preview.
 
 ---
 
@@ -143,7 +183,7 @@ Les clés de licence et mots de passe sont **masqués** partout dans les logs et
 
 ```bash
 pip install -e ".[dev]"
-python3 -m pytest -q          # 34 tests sur la logique pure (catalogue, scan DB, uploads, redaction)
+python3 -m pytest -q          # 45 tests sur la logique pure (catalogue, scan DB, uploads, redaction)
 ```
 
 Les tests couvrent la logique testable sans serveur (parsing du catalogue, slots de licence,

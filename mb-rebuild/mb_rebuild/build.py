@@ -1,16 +1,17 @@
 """Module 4 — assemble a clean site on the target host.
 
 Sequence (every write is dry-run guarded):
-  1. wp core download          — official WordPress
-  2. wp-config generated fresh — new salts (official API), fresh DB password,
-                                 DISALLOW_FILE_EDIT=true
+  1. wp core download          — official WordPress (pinnable with wp_version)
+  2. wp-config generated fresh — fresh salts, carried-over $table_prefix,
+                                 DISALLOW_FILE_EDIT=true, WP_AUTO_UPDATE_CORE=false
   3. install plugins           — from the catalogue's official ZIPs, activate,
                                  apply licences read from .env
   4. install theme             — from the catalogue
   5. import + clean DB         — module 3
   6. uploads copied + scanned  — images rapatriated, every .php/.phtml removed
   7. hardening                 — Wordfence + 2FA + registrations closed
-  8. compliance report         — plus manual actions (Search Console, DNS)
+  8. preview override (opt.)   — WP_HOME/WP_SITEURL for preprod (remove at cutover)
+  9. compliance report         — plus a per-site MANUAL-steps checklist
 
 No file of CODE from the old site is ever copied — only DB + uploads. That
 single rule is what guarantees no backdoor travels.
@@ -37,6 +38,7 @@ class SiteConfig:
     plugins: list[str] = field(default_factory=list)
     theme: str | None = None
     php: str | None = None
+    table_prefix: str | None = None
 
     @classmethod
     def from_dict(cls, data: dict) -> "SiteConfig":
@@ -47,7 +49,50 @@ class SiteConfig:
             plugins=[str(p) for p in data.get("plugins", [])],
             theme=data.get("theme"),
             php=str(data["php"]) if data.get("php") is not None else None,
+            table_prefix=data.get("table_prefix"),
         )
+
+
+@dataclass
+class DbConfig:
+    """Credentials for the fresh wp-config on the target.
+
+    table_prefix is carried over from the OLD site: WordPress core tables and
+    every plugin's option keys are namespaced by it, so the imported DB only
+    matches if wp-config uses the same prefix.
+    """
+
+    name: str
+    user: str
+    password: str
+    host: str = "localhost"
+    table_prefix: str | None = None
+
+
+def manual_steps(site: str, *, preview_url: str | None = None) -> list[str]:
+    """Per-site checklist of steps the CLI deliberately does NOT automate.
+
+    Phases E/F/G of the playbook (Infomaniak Manager + Google Search Console)
+    are out of CLI scope and stay manual — this list exists so they are not
+    forgotten site by site.
+    """
+    steps = [
+        "Verify the rebuilt site on the PREVIEW URL before touching DNS",
+    ]
+    if preview_url:
+        steps.append(
+            "REMOVE the preview override at cutover — "
+            f"`mb-rebuild preview --target <host> --clear` (was set to {preview_url})"
+        )
+    steps += [
+        "Infomaniak Manager: detach the domain from the old site",
+        "Infomaniak Manager: attach the domain to the new site",
+        "DNS: point the domain at the new host and let it propagate",
+        "SSL: issue/renew the certificate for the domain on the new host",
+        "Google Search Console: re-verify ownership and re-submit the sitemap",
+        "Wordfence: confirm 2FA enrolment for every admin account",
+    ]
+    return steps
 
 
 def find_dangerous_upload_files(root: str) -> list[str]:
@@ -123,6 +168,9 @@ def build(
     wp_version: str | None = None,
     source_uploads: str | None = None,
     staging_dir: str,
+    db: DbConfig | None = None,
+    preview_url: str | None = None,
+    auto_update_core: bool = False,
 ) -> Report:
     """Run the assembly. Returns a compliance report."""
     rep = Report(title=f"Build compliance — {cfg.site}")
@@ -135,14 +183,45 @@ def build(
     remote.wp(core_args, write=True)
     rep.add("Core", f"official WordPress {wp_version or '(latest)'} downloaded")
 
-    # 2. Fresh wp-config: new salts from the official API, DISALLOW_FILE_EDIT.
+    # 2. Fresh wp-config. If DB creds are given we generate it from scratch,
+    #    carrying over the old site's $table_prefix (the imported DB depends on
+    #    it). Otherwise we assume a wp-config already exists and only refresh
+    #    salts. Either way we set the hardening constants.
+    if db:
+        register_secret(db.password)  # never echo the DB password in logs
+        create_args = [
+            "config", "create",
+            f"--dbname={db.name}",
+            f"--dbuser={db.user}",
+            f"--dbpass={db.password}",
+            f"--dbhost={db.host}",
+            "--force",
+        ]
+        if db.table_prefix:
+            create_args.append(f"--dbprefix={db.table_prefix}")
+        remote.wp(create_args, write=True)
+        rep.add("wp-config", f"generated fresh (table_prefix={db.table_prefix or 'wp_'})")
+    else:
+        rep.add("wp-config", "existing config kept (no DB creds passed); salts refreshed")
+
+    remote.wp(["config", "shuffle-salts"], write=True, check=False)
     remote.wp(
         ["config", "set", "DISALLOW_FILE_EDIT", "true", "--raw", "--type=constant"],
         write=True,
         check=False,
     )
-    remote.wp(["config", "shuffle-salts"], write=True, check=False)
-    rep.add("wp-config", "fresh salts + DISALLOW_FILE_EDIT=true")
+    # APC case: an old premium plugin was incompatible with the next major WP,
+    # so core auto-updates must be pinned off and updates driven deliberately.
+    remote.wp(
+        ["config", "set", "WP_AUTO_UPDATE_CORE", "true" if auto_update_core else "false",
+         "--raw", "--type=constant"],
+        write=True,
+        check=False,
+    )
+    rep.add(
+        "wp-config hardening",
+        f"fresh salts + DISALLOW_FILE_EDIT=true + WP_AUTO_UPDATE_CORE={str(auto_update_core).lower()}",
+    )
 
     # 3. Plugins from the catalogue.
     for slug in cfg.plugins:
@@ -196,12 +275,41 @@ def build(
     remote.wp(["option", "update", "users_can_register", "0"], write=True, check=False)
     rep.add("Hardening", "Wordfence installed, registrations closed (enable 2FA in Wordfence)")
 
-    # 7. Manual actions the tool deliberately does NOT do.
-    rep.add("Manual actions", "Verify on a preprod URL, then switch DNS by hand")
-    rep.add("Manual actions", "Re-submit the site to Google Search Console")
-    rep.add("Manual actions", "Confirm 2FA enrolment for every admin in Wordfence")
+    # 7. Preview override for preprod validation. MUST be removed at cutover,
+    #    which is the classic forgotten step — so it is called out below too.
+    if preview_url:
+        remote.wp(["config", "set", "WP_HOME", preview_url, "--type=constant"], write=True, check=False)
+        remote.wp(["config", "set", "WP_SITEURL", preview_url, "--type=constant"], write=True, check=False)
+        rep.add("Preview override SET", f"WP_HOME/WP_SITEURL -> {preview_url}")
+
+    # 8. Per-site checklist of the remaining MANUAL steps (do NOT forget).
+    for stepline in manual_steps(cfg.site, preview_url=preview_url):
+        rep.add("Manual steps remaining (per site)", stepline)
 
     return rep
+
+
+def set_preview(remote: Remote, url: str) -> None:
+    """Pin WP_HOME/WP_SITEURL to a preview URL (preprod validation)."""
+    remote.check_connectivity()
+    remote.wp(["config", "set", "WP_HOME", url, "--type=constant"], write=True)
+    remote.wp(["config", "set", "WP_SITEURL", url, "--type=constant"], write=True)
+    if not remote.dry_run:
+        ok(f"preview override set -> {url}")
+
+
+def clear_preview(remote: Remote) -> None:
+    """Remove the WP_HOME/WP_SITEURL override at cutover.
+
+    The database's own siteurl/home options take over again — this is the step
+    everyone forgets, so it gets its own command.
+    """
+    remote.check_connectivity()
+    remote.wp(["config", "delete", "WP_HOME"], write=True, check=False)
+    remote.wp(["config", "delete", "WP_SITEURL"], write=True, check=False)
+    remote.wp(["cache", "flush"], write=True, check=False)
+    if not remote.dry_run:
+        ok("preview override removed (WP_HOME / WP_SITEURL)")
 
 
 def _push_dir(remote: Remote, local_dir: str, remote_dir: str) -> None:
