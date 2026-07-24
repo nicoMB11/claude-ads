@@ -1,11 +1,12 @@
 // Composant "tunnel de reservation" reutilisable.
 // Utilise par la web app (index.html) et par le widget embarquable (book.html).
-import { api, toast, esc, fmtDate, todayISO } from './api.js';
+import { api, toast, esc, fmtDate, todayISO, applyBranding } from './api.js';
 
 export async function mountBooking(el, slug, opts = {}) {
   let R;
   try { R = await api.get(`/api/r/${slug}`); }
   catch { el.innerHTML = `<div class="card">Restaurant introuvable.</div>`; return; }
+  applyBranding(R.branding); // couleurs de la charte du restaurant
 
   const state = { step: 1, party: 2, date: todayISO(), time: null, service: null };
   const maxDate = (() => { const d = new Date(); d.setDate(d.getDate() + R.horizonDays); return d.toISOString().slice(0, 10); })();

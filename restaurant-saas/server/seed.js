@@ -31,6 +31,7 @@ const settings = {
     group_validation: true,  // Validation au-dela d'un seuil
   },
   group_validation_threshold: 8, // a partir de 8 personnes -> validation manuelle
+  branding: { primary: '#9c3d2e', accent: '#c19a4b', logo: '' }, // charte graphique
 };
 
 const r = db.prepare(`
@@ -55,14 +56,16 @@ for (const t of tables) insT.run(rid, ...t);
 
 // --- Services : dejeuner (mar-dim) + diner (mar-sam) -------------------------
 const insS = db.prepare(
-  'INSERT INTO services (restaurant_id, name, weekday, start_time, last_seating, slot_capacity, service_capacity, turn_time_min) VALUES (?,?,?,?,?,?,?,?)'
+  'INSERT INTO services (restaurant_id, name, weekday, start_time, last_seating, slot_capacity, service_capacity, turn_time_min, allow_double_seating) VALUES (?,?,?,?,?,?,?,?,?)'
 );
 // weekday : 0=dim,1=lun,2=mar,3=mer,4=jeu,5=ven,6=sam. Ferme le lundi.
+// Dejeuner : rotation rapide -> double service autorise (1).
 for (const wd of [2, 3, 4, 5, 6, 0]) {
-  insS.run(rid, 'Dejeuner', wd, '12:00', '13:45', 16, null, 90);
+  insS.run(rid, 'Dejeuner', wd, '12:00', '13:45', 16, null, 90, 1);
 }
+// Diner : une table = un seul groupe pour la soiree -> pas de double service (0).
 for (const wd of [2, 3, 4, 5, 6]) {
-  insS.run(rid, 'Diner', wd, '19:00', '21:30', null, null, 105);
+  insS.run(rid, 'Diner', wd, '19:00', '21:30', null, null, 105, 0);
 }
 
 // --- Une fermeture exceptionnelle -------------------------------------------

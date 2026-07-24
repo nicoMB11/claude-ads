@@ -78,6 +78,36 @@ export function pickTables(freeTables, partySize, maxCombine = 3) {
 //  Retourne { ok, tableIds, reason }.
 //  ctx = { tables, reservations, services } charge par l'appelant (voir repo).
 // ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+//  occupiedTables : quelles tables sont occupees sur la fenetre [start,end] ?
+//  Applique la regle du double service : si un service interdit le double
+//  service, ses tables sont bloquees pour TOUTE la duree du service (un seul
+//  passage) ; sinon elles se liberent apres la duree du repas (+ buffer).
+//  Renvoie une Map tableId -> reservation. Logique partagee moteur / plan de salle.
+// ----------------------------------------------------------------------------
+export function occupiedTables(restaurant, services, reservations, date, start, end) {
+  const buffer = restaurant.buffer_min;
+  const occ = new Map();
+  for (const r of reservations) {
+    if (r.date !== date || !ACTIVE_STATUSES.includes(r.status)) continue;
+    const rStart = toMinutes(r.time);
+    const rSvc = serviceForDateTime(restaurant, services, date, r.time);
+    const noDouble = rSvc && rSvc.allow_double_seating === 0;
+    let occStart, occEnd;
+    if (noDouble) {
+      occStart = toMinutes(rSvc.start_time);
+      occEnd = toMinutes(rSvc.last_seating) + turnFor(restaurant, rSvc) + buffer;
+    } else {
+      occStart = rStart;
+      occEnd = rStart + r.duration_min + buffer;
+    }
+    if (overlaps(start, end + buffer, occStart, occEnd)) {
+      for (const id of JSON.parse(r.table_ids)) if (!occ.has(id)) occ.set(id, r);
+    }
+  }
+  return occ;
+}
+
 export function canSeat(restaurant, ctx, { date, time, partySize, excludeId = null }) {
   const service = serviceForDateTime(restaurant, ctx.services, date, time);
   if (!service) return { ok: false, reason: 'closed' };
@@ -85,35 +115,28 @@ export function canSeat(restaurant, ctx, { date, time, partySize, excludeId = nu
   const duration = turnFor(restaurant, service);
   const start = toMinutes(time);
   const end = start + duration;
-  const buffer = restaurant.buffer_min;
 
   // Reservations actives du jour, hors celle qu'on edite eventuellement.
   const dayResa = ctx.reservations.filter(
     (r) => r.date === date && ACTIVE_STATUSES.includes(r.status) && r.id !== excludeId
   );
 
-  // --- Contrainte 1 : tables physiques ---------------------------------------
-  const occupied = new Set();
+  // --- Contrainte 1 : tables physiques (logique double service partagee) -----
+  const occupied = occupiedTables(restaurant, ctx.services, dayResa, date, start, end);
+  const freeTables = ctx.tables.filter((t) => t.active && !occupied.has(t.id));
+  const tableIds = pickTables(freeTables, partySize);
+  if (!tableIds) return { ok: false, reason: 'no_table' };
+
+  // --- Contraintes 2 & 3 : plafonds de couverts ------------------------------
   let coversInSlot = 0;
   let coversInService = 0;
   const svcStart = toMinutes(service.start_time);
   const svcEnd = toMinutes(service.last_seating) + duration;
-
   for (const r of dayResa) {
     const rStart = toMinutes(r.time);
-    const rEnd = rStart + r.duration_min + buffer; // table occupee + remise en place
-    if (overlaps(start, end + buffer, rStart, rEnd)) {
-      for (const id of JSON.parse(r.table_ids)) occupied.add(id);
-    }
     if (rStart === start) coversInSlot += r.party_size;
-    if (overlaps(svcStart, svcEnd, rStart, rStart + r.duration_min)) {
-      coversInService += r.party_size;
-    }
+    if (overlaps(svcStart, svcEnd, rStart, rStart + r.duration_min)) coversInService += r.party_size;
   }
-
-  const freeTables = ctx.tables.filter((t) => t.active && !occupied.has(t.id));
-  const tableIds = pickTables(freeTables, partySize);
-  if (!tableIds) return { ok: false, reason: 'no_table' };
 
   // --- Contrainte 2 : plafond de couverts par creneau ------------------------
   if (service.slot_capacity != null && coversInSlot + partySize > service.slot_capacity) {

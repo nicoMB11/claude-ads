@@ -1,5 +1,6 @@
 // Tableau de bord restaurant. Chaque onglet se charge a la demande.
-import { api, SLUG, toast, esc, WD, fmtDate, todayISO, statusBadge } from './api.js';
+import { api, SLUG, toast, esc, WD, fmtDate, todayISO, statusBadge, applyBranding, shade } from './api.js';
+import { extractFromImage, extractFromPdf } from './palette.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const A = `/api/admin/${SLUG}`;
@@ -7,8 +8,8 @@ let R = null; // overview cache
 
 // --- Navigation onglets ------------------------------------------------------
 const renderers = {
-  dash: renderDash, floor: renderFloor, resa: renderResa,
-  config: renderConfig, options: renderOptions, groups: renderGroups, outbox: renderOutbox,
+  dash: renderDash, floor: renderFloor, resa: renderResa, config: renderConfig,
+  branding: renderBranding, options: renderOptions, groups: renderGroups, outbox: renderOutbox,
 };
 document.querySelectorAll('.tab').forEach((t) => t.onclick = () => activate(t.dataset.tab));
 function activate(name) {
@@ -24,7 +25,8 @@ function activate(name) {
     R = await api.get(`${A}/overview`);
     $('#rname').innerHTML = `${esc(R.restaurant.name)}<span class="dot">.</span>`;
   } catch { $('#rname').textContent = 'Restaurant introuvable'; }
-  activate('dash');
+  const wanted = new URLSearchParams(location.search).get('tab');
+  activate(renderers[wanted] ? wanted : 'dash');
 })();
 
 // ============================ TABLEAU DE BORD ================================
@@ -239,6 +241,7 @@ async function renderConfig(pane) {
       <!-- Services -->
       <div class="card">
         <h2>Services & horaires</h2>
+        <p class="muted small">Double service = une table peut etre re-attribuee dans le meme service (rotation). Desactive = un seul groupe par table pour tout le service.</p>
         <div id="svc-list"></div>
         <hr style="border:none;border-top:1px solid var(--line);margin:14px 0">
         <details><summary style="cursor:pointer;font-weight:600">Ajouter un service</summary>
@@ -247,8 +250,14 @@ async function renderConfig(pane) {
             <div class="field"><label>Jour</label><select id="ns-wd">${WD.map((d, i) => `<option value="${i}">${d}</option>`).join('')}</select></div>
           </div>
           <div class="fields-2">
-            <div class="field"><label>Premier creneau</label><input id="ns-start" type="time" value="19:00" step="900"></div>
+            <div class="field"><label>Debut de service</label><input id="ns-start" type="time" value="19:00" step="900"></div>
             <div class="field"><label>Dernier creneau</label><input id="ns-last" type="time" value="21:30" step="900"></div>
+          </div>
+          <div class="fields-2">
+            <div class="field"><label>Duree de table (min)</label><input id="ns-turn" type="number" value="105" placeholder="defaut restaurant"></div>
+            <div class="field" style="display:flex;align-items:flex-end">
+              <label class="opt-toggle" style="border:none;padding:0"><input type="checkbox" id="ns-double"> <span>Double service autorise</span></label>
+            </div>
           </div>
           <div class="fields-2">
             <div class="field"><label>Couverts max / creneau</label><input id="ns-slotcap" type="number" placeholder="illimite"></div>
@@ -322,23 +331,35 @@ async function renderConfig(pane) {
   };
 
   // Services
+  const reloadServices = async () => paintServices((await api.get(`${A}/services`)).services);
   const paintServices = (list) => {
-    $('#svc-list').innerHTML = list.length ? `<table class="data"><tbody>${list.map((s) => `<tr>
+    $('#svc-list').innerHTML = list.length ? `<table class="data"><tbody>${list.map((s) => {
+      const dbl = s.allow_double_seating === 1;
+      return `<tr>
       <td><strong>${esc(s.name)}</strong><div class="small muted">${WD[s.weekday]}</div></td>
-      <td class="small">${s.start_time}–${s.last_seating}</td>
-      <td class="small muted">${s.slot_capacity ? s.slot_capacity + '/cr.' : ''} ${s.service_capacity ? s.service_capacity + '/svc' : ''}</td>
-      <td style="text-align:right"><button class="btn sm danger" data-del="${s.id}">✕</button></td></tr>`).join('')}</tbody></table>`
+      <td class="small">${s.start_time}–${s.last_seating}<div class="muted">table ${s.turn_time_min || g.turn_time_min} min</div></td>
+      <td>${dbl ? '<span class="badge green" title="rotation autorisee">Double svc</span>' : '<span class="badge grey" title="un seul groupe par table">Simple svc</span>'}
+        ${s.slot_capacity ? `<div class="small muted">${s.slot_capacity}/cr.</div>` : ''}</td>
+      <td style="text-align:right"><div class="row" style="gap:4px;justify-content:flex-end">
+        <button class="btn sm subtle" data-toggle="${s.id}" data-val="${dbl ? 0 : 1}">${dbl ? 'Passer simple' : 'Passer double'}</button>
+        <button class="btn sm danger" data-del="${s.id}">✕</button></div></td></tr>`;
+    }).join('')}</tbody></table>`
       : `<p class="muted small">Aucun service.</p>`;
     $('#svc-list').querySelectorAll('button[data-del]').forEach((b) => b.onclick = async () => {
-      await api.del(`${A}/services/${b.dataset.del}`); paintServices((await api.get(`${A}/services`)).services);
+      await api.del(`${A}/services/${b.dataset.del}`); reloadServices();
+    });
+    $('#svc-list').querySelectorAll('button[data-toggle]').forEach((b) => b.onclick = async () => {
+      await api.patch(`${A}/services/${b.dataset.toggle}`, { allow_double_seating: Number(b.dataset.val) });
+      toast('Service mis a jour'); reloadServices();
     });
   };
   paintServices(services);
   $('#ns-add').onclick = async () => {
     await api.post(`${A}/services`, { name: $('#ns-name').value, weekday: $('#ns-wd').value,
-      start_time: $('#ns-start').value, last_seating: $('#ns-last').value,
+      start_time: $('#ns-start').value, last_seating: $('#ns-last').value, turn_time_min: $('#ns-turn').value || null,
+      allow_double_seating: $('#ns-double').checked ? 1 : 0,
       slot_capacity: $('#ns-slotcap').value || null, service_capacity: $('#ns-svccap').value || null });
-    toast('Service ajoute'); paintServices((await api.get(`${A}/services`)).services);
+    toast('Service ajoute'); reloadServices();
   };
 
   // Fermetures
@@ -357,6 +378,123 @@ async function renderConfig(pane) {
     await api.post(`${A}/closures`, { date: $('#nc-date').value, reason: $('#nc-reason').value });
     toast('Fermeture ajoutee'); paintClosures((await api.get(`${A}/closures`)).closures);
   };
+}
+
+// ============================ CHARTE GRAPHIQUE ==============================
+async function renderBranding(pane) {
+  const cfg = await api.get(`${A}/settings`);
+  const b = Object.assign({ primary: '#9c3d2e', accent: '#c19a4b', logo: '' }, cfg.settings.branding || {});
+  const state = { primary: b.primary, accent: b.accent, target: 'primary' };
+
+  pane.innerHTML = `
+    <div class="grid" style="grid-template-columns:1fr 1fr;align-items:start">
+      <div class="card">
+        <h2>Couleurs de la marque</h2>
+        <div class="fields-2">
+          <div class="field"><label>Couleur principale</label>
+            <div class="row" style="gap:8px"><input type="color" id="c-primary" value="${state.primary}" style="width:52px;padding:2px;height:42px">
+              <input id="h-primary" value="${state.primary}" style="flex:1"></div></div>
+          <div class="field"><label>Couleur accent</label>
+            <div class="row" style="gap:8px"><input type="color" id="c-accent" value="${state.accent}" style="width:52px;padding:2px;height:42px">
+              <input id="h-accent" value="${state.accent}" style="flex:1"></div></div>
+        </div>
+
+        <hr style="border:none;border-top:1px solid var(--line);margin:6px 0 14px">
+        <h2 style="font-size:1rem">Extraire une palette automatiquement</h2>
+        <div class="row small" style="margin:6px 0 10px">
+          <span class="muted">Appliquer la couleur cliquee a :</span>
+          <label class="opt-toggle" style="border:none;padding:0"><input type="radio" name="tgt" value="primary" checked> <span>Principale</span></label>
+          <label class="opt-toggle" style="border:none;padding:0"><input type="radio" name="tgt" value="accent"> <span>Accent</span></label>
+        </div>
+
+        <div class="grid" style="gap:10px">
+          <div class="row" style="gap:10px">
+            <div style="flex:1"><label>Depuis un logo / une image</label><input type="file" id="f-img" accept="image/*"></div>
+          </div>
+          <div class="row" style="gap:10px">
+            <div style="flex:1"><label>Depuis une charte (PDF)</label><input type="file" id="f-pdf" accept="application/pdf"></div>
+          </div>
+          <div>
+            <label>Depuis l'adresse d'un site <span class="muted small">(seule methode qui necessite internet)</span></label>
+            <div class="row" style="gap:8px"><input id="f-url" placeholder="https://mon-restaurant.fr" style="flex:1">
+              <button class="btn sm subtle" id="btn-url">Lire</button></div>
+          </div>
+        </div>
+        <div id="br-status" class="small muted" style="margin-top:10px"></div>
+        <div id="br-swatches" class="slots" style="margin-top:8px"></div>
+
+        <hr style="border:none;border-top:1px solid var(--line);margin:16px 0 12px">
+        <button class="btn" id="br-save">Enregistrer la charte</button>
+      </div>
+
+      <div class="card">
+        <h2>Apercu du widget client</h2>
+        <p class="muted small">Rendu avec les couleurs choisies (temps reel).</p>
+        <div id="br-preview"></div>
+      </div>
+    </div>`;
+
+  const $$ = (s) => pane.querySelector(s);
+  const sync = () => {
+    ['primary', 'accent'].forEach((k) => {
+      $$(`#c-${k}`).value = state[k]; $$(`#h-${k}`).value = state[k];
+    });
+    drawPreview();
+  };
+  function setColor(k, v) { if (/^#[0-9a-fA-F]{6}$/.test(v)) { state[k] = v.toLowerCase(); sync(); } }
+
+  ['primary', 'accent'].forEach((k) => {
+    $$(`#c-${k}`).oninput = (e) => setColor(k, e.target.value);
+    $$(`#h-${k}`).onchange = (e) => setColor(k, e.target.value.trim());
+  });
+  pane.querySelectorAll('input[name=tgt]').forEach((r) => r.onchange = (e) => (state.target = e.target.value));
+
+  function showSwatches(list) {
+    const box = $$('#br-swatches');
+    if (!list || !list.length) { box.innerHTML = `<span class="muted small">Aucune couleur detectee.</span>`; return; }
+    box.innerHTML = list.map((hex) => `<div class="slot" data-hex="${hex}" title="${hex}"
+      style="background:${hex};color:#fff;min-width:54px;text-shadow:0 1px 2px rgba(0,0,0,.4)">${hex}</div>`).join('');
+    box.querySelectorAll('.slot').forEach((n) => n.onclick = () => setColor(state.target, n.dataset.hex));
+  }
+
+  $$('#f-img').onchange = async (e) => {
+    const file = e.target.files[0]; if (!file) return;
+    $$('#br-status').textContent = 'Lecture de l\'image...';
+    try { const sw = await extractFromImage(file); showSwatches(sw); $$('#br-status').textContent = `${sw.length} couleur(s) trouvee(s). Cliquez pour appliquer.`; }
+    catch { $$('#br-status').textContent = 'Impossible de lire cette image.'; }
+  };
+  $$('#f-pdf').onchange = async (e) => {
+    const file = e.target.files[0]; if (!file) return;
+    $$('#br-status').textContent = 'Analyse du PDF...';
+    try { const sw = await extractFromPdf(file); showSwatches(sw); $$('#br-status').textContent = sw.length ? `${sw.length} couleur(s) trouvee(s).` : 'Aucune couleur vectorielle detectee dans ce PDF.'; }
+    catch { $$('#br-status').textContent = 'Impossible d\'analyser ce PDF.'; }
+  };
+  $$('#btn-url').onclick = async () => {
+    const url = $$('#f-url').value.trim(); if (!url) return;
+    $$('#br-status').textContent = 'Lecture du site...';
+    try { const res = await api.post(`${A}/branding/from-url`, { url }); showSwatches(res.swatches); $$('#br-status').textContent = `${res.swatches.length} couleur(s) trouvee(s).`; }
+    catch (err) { $$('#br-status').textContent = err.message || 'Lecture impossible (site inaccessible ou reseau restreint en demo).'; }
+  };
+
+  $$('#br-save').onclick = async () => {
+    await api.patch(`${A}/settings`, { settings: { ...cfg.settings, branding: { primary: state.primary, accent: state.accent, logo: b.logo } } });
+    applyBranding(state); toast('Charte enregistree');
+  };
+
+  function drawPreview() {
+    const p = state.primary, pd = shade(p, -0.25), a = state.accent;
+    $$('#br-preview').innerHTML = `
+      <div style="border:1px solid var(--line);border-radius:14px;padding:18px;background:#fff">
+        <div style="font-weight:800;font-size:1.1rem">Le Petit Comptoir<span style="color:${p}">.</span></div>
+        <div class="stepper" style="margin:12px 0"><div class="st" style="background:${p};flex:1;height:4px;border-radius:2px"></div><div class="st" style="flex:1;height:4px;border-radius:2px;background:var(--line)"></div><div class="st" style="flex:1;height:4px;border-radius:2px;background:var(--line)"></div></div>
+        <div class="slots">
+          ${['12:00', '12:30', '13:00'].map((t, i) => `<div style="border:1px solid ${i === 1 ? p : 'var(--line)'};background:${i === 1 ? p : '#fff'};color:${i === 1 ? '#fff' : 'var(--ink)'};border-radius:9px;padding:9px 12px;font-weight:600;font-size:.9rem">${t}</div>`).join('')}
+        </div>
+        <button style="margin-top:14px;width:100%;border:none;background:${p};color:#fff;padding:11px;border-radius:10px;font-weight:600;cursor:pointer" onmouseover="this.style.background='${pd}'" onmouseout="this.style.background='${p}'">Confirmer la reservation</button>
+        <div style="margin-top:10px;text-align:center"><span style="display:inline-block;padding:2px 10px;border-radius:999px;font-size:.76rem;font-weight:700;background:${a}22;color:${a}">Evenement a venir</span></div>
+      </div>`;
+  }
+  sync();
 }
 
 // ============================ OPTIONS =======================================

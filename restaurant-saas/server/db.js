@@ -57,7 +57,8 @@ export function migrate() {
       last_seating     TEXT NOT NULL,             -- 'HH:MM' dernier creneau propose
       slot_capacity    INTEGER,                   -- couverts max par creneau (option)
       service_capacity INTEGER,                   -- couverts max sur tout le service (option)
-      turn_time_min    INTEGER,                   -- surcharge de la duree pour ce service
+      turn_time_min    INTEGER,                   -- duree de table pour ce service (surcharge)
+      allow_double_seating INTEGER NOT NULL DEFAULT 1, -- double service sur une meme table ?
       active           INTEGER NOT NULL DEFAULT 1
     );
 
@@ -127,4 +128,15 @@ export function migrate() {
       created_at    TEXT NOT NULL DEFAULT (datetime('now'))
     );
   `);
+
+  // Migrations additives (bases existantes) : ajoute les colonnes manquantes.
+  ensureColumn('services', 'allow_double_seating', 'INTEGER NOT NULL DEFAULT 1');
+}
+
+// Ajoute une colonne si elle n'existe pas encore (idempotent).
+function ensureColumn(table, column, ddl) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all();
+  if (!cols.some((c) => c.name === column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${ddl}`);
+  }
 }

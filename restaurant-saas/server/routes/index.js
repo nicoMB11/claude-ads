@@ -5,7 +5,8 @@ import {
   listReservations, listReservationsRange, createReservation, setReservationStatus,
   totalCapacity, notify,
 } from '../repo.js';
-import { availability, canSeat, weekdayOf, toMinutes, turnFor, serviceForDateTime } from '../engine.js';
+import { availability, canSeat, weekdayOf, toMinutes, turnFor, serviceForDateTime, occupiedTables } from '../engine.js';
+import { extractFromUrl } from '../colors.js';
 
 const bad = (message, status = 400) => ({ __status: status, error: 'bad_request', message });
 const notFound = () => ({ __status: 404, error: 'not_found' });
@@ -17,6 +18,7 @@ function publicRestaurant(r) {
     maxPartyOnline: r.max_party_online, horizonDays: r.horizon_days,
     slotInterval: r.slot_interval_min, options: r.settings.options || {},
     groupValidationThreshold: r.settings.group_validation_threshold || null,
+    branding: r.settings.branding || { primary: '#9c3d2e', accent: '#c19a4b', logo: '' },
     capacity: totalCapacity(r.id),
   };
 }
@@ -147,11 +149,25 @@ export function registerRoutes(route) {
   });
   route('POST', '/api/admin/:slug/services', ({ params, body }) => {
     const r = admin(params.slug); if (!r) return notFound();
-    const info = db.prepare(`INSERT INTO services (restaurant_id,name,weekday,start_time,last_seating,slot_capacity,service_capacity,turn_time_min)
-      VALUES (?,?,?,?,?,?,?,?)`).run(r.id, body.name || 'Service', Number(body.weekday), body.start_time, body.last_seating,
+    const info = db.prepare(`INSERT INTO services (restaurant_id,name,weekday,start_time,last_seating,slot_capacity,service_capacity,turn_time_min,allow_double_seating)
+      VALUES (?,?,?,?,?,?,?,?,?)`).run(r.id, body.name || 'Service', Number(body.weekday), body.start_time, body.last_seating,
       body.slot_capacity ? Number(body.slot_capacity) : null, body.service_capacity ? Number(body.service_capacity) : null,
-      body.turn_time_min ? Number(body.turn_time_min) : null);
+      body.turn_time_min ? Number(body.turn_time_min) : null, body.allow_double_seating ? 1 : 0);
     return { id: info.lastInsertRowid };
+  });
+  // Edition d'un service (dont le double service + duree de table).
+  route('PATCH', '/api/admin/:slug/services/:id', ({ params, body }) => {
+    const r = admin(params.slug); if (!r) return notFound();
+    const s = db.prepare('SELECT * FROM services WHERE id=? AND restaurant_id=?').get(params.id, r.id);
+    if (!s) return notFound();
+    const f = { ...s, ...body };
+    db.prepare(`UPDATE services SET name=?,weekday=?,start_time=?,last_seating=?,slot_capacity=?,service_capacity=?,turn_time_min=?,allow_double_seating=?,active=? WHERE id=?`)
+      .run(f.name, Number(f.weekday), f.start_time, f.last_seating,
+        f.slot_capacity != null && f.slot_capacity !== '' ? Number(f.slot_capacity) : null,
+        f.service_capacity != null && f.service_capacity !== '' ? Number(f.service_capacity) : null,
+        f.turn_time_min ? Number(f.turn_time_min) : null,
+        f.allow_double_seating ? 1 : 0, f.active ? 1 : 0, s.id);
+    return { ok: true };
   });
   route('DELETE', '/api/admin/:slug/services/:id', ({ params }) => {
     const r = admin(params.slug); if (!r) return notFound();
@@ -207,20 +223,22 @@ export function registerRoutes(route) {
     const ctx = loadContext(r.id, date);
     const svc = serviceForDateTime(r, ctx.services, date, time);
     const duration = svc ? turnFor(r, svc) : r.turn_time_min;
-    const start = toMinutes(time), end = start + duration, buf = r.buffer_min;
-    const active = ctx.reservations.filter((x) => ['confirmed', 'pending', 'seated'].includes(x.status));
-    const occ = {};
-    for (const x of active) {
-      const s = toMinutes(x.time), e = s + x.duration_min + buf;
-      if (s < end + buf && start < e) for (const id of JSON.parse(x.table_ids)) occ[id] = x;
-    }
-    const tables = ctx.tables.map((t) => ({
-      id: t.id, name: t.name, zone: t.zone, min: t.min_seats, max: t.max_seats,
-      active: !!t.active, pos_x: t.pos_x, pos_y: t.pos_y,
-      occupiedBy: occ[t.id] ? { ref: occ[t.id].ref, name: occ[t.id].customer_name, party: occ[t.id].party_size, time: occ[t.id].time } : null,
-    }));
+    const start = toMinutes(time), end = start + duration;
+    // Meme logique d'occupation que le moteur (dont regle du double service).
+    const occ = occupiedTables(r, ctx.services, ctx.reservations, date, start, end);
+    const tables = ctx.tables.map((t) => {
+      const x = occ.get(t.id);
+      return {
+        id: t.id, name: t.name, zone: t.zone, min: t.min_seats, max: t.max_seats,
+        active: !!t.active, pos_x: t.pos_x, pos_y: t.pos_y,
+        occupiedBy: x ? { ref: x.ref, name: x.customer_name, party: x.party_size, time: x.time } : null,
+      };
+    });
     const seatsTotal = ctx.tables.filter((t) => t.active).reduce((s, t) => s + t.max_seats, 0);
-    const seatsOccupied = Object.values(occ).reduce((s, x) => s + x.party_size, 0);
+    // couverts occupant la salle sur la fenetre (une reservation comptee une fois)
+    const byRef = new Map();
+    for (const x of occ.values()) byRef.set(x.ref, x.party_size);
+    const seatsOccupied = [...byRef.values()].reduce((s, n) => s + n, 0);
     return { date, time, open: !!svc, service: svc?.name || null, tables, seatsTotal, seatsOccupied };
   });
 
@@ -250,6 +268,15 @@ export function registerRoutes(route) {
       db.prepare('UPDATE restaurants SET settings=? WHERE id=?').run(JSON.stringify(body.settings), r.id);
     }
     return { ok: true };
+  });
+
+  // ---- Charte graphique : extraction de couleurs depuis une URL ------------
+  route('POST', '/api/admin/:slug/branding/from-url', async ({ params, body }) => {
+    const r = admin(params.slug); if (!r) return notFound();
+    if (!body.url) return bad('url requise');
+    const res = await extractFromUrl(String(body.url));
+    if (res.error) return { __status: 422, error: 'extract_failed', message: res.error };
+    return res; // { swatches: [...] }
   });
 
   // ---- Boite d'envoi simulee (mail/SMS mockes) -----------------------------

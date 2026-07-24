@@ -29,7 +29,7 @@ Aucune dépendance à installer : tout tourne sur les modules natifs de Node
 | Widget seul (iframe) | http://localhost:3000/book.html |
 
 ```bash
-npm test          # 9 tests unitaires du moteur anti-surbooking
+npm test          # 11 tests unitaires (anti-surbooking, double service, capacités)
 ```
 
 ## Le moteur anti-surbooking (cœur du produit)
@@ -54,6 +54,23 @@ Réglable par restaurant : nombre et taille des tables, zones, durée moyenne d'
 repas, buffer entre services, pas des créneaux, horizon de réservation,
 capacité par créneau/service.
 
+### Double service (rotation des tables)
+
+Configurable **par service** dans l'onglet *Configuration* :
+
+- **Durée de service** : plage `début → dernier créneau`.
+- **Durée de table** : temps d'occupation d'une table (`turn time`), surchargeable
+  par service.
+- **Double service autorisé** (bascule) :
+  - **activé** → une table peut être ré-attribuée dans le même service dès qu'elle
+    se libère (après la durée de table + buffer) → plusieurs passages / rotation ;
+  - **désactivé** → une table = **un seul groupe pour tout le service** (pas de
+    second passage), même si la durée de table est écoulée.
+
+Le plan de salle et le moteur partagent exactement la même logique d'occupation
+(`occupiedTables` dans `engine.js`) → l'affichage reflète toujours la règle
+appliquée. *Exemple livré : déjeuner en double service, dîner en simple service.*
+
 ## Configuration restaurant (back-office)
 
 - **Tables & couverts** : ajout unitaire ou **config express** (« 6 tables de 2,
@@ -66,6 +83,24 @@ capacité par créneau/service.
   (confirmée / à valider / installée / annulée / no-show).
 - **Boîte d'envoi simulée** : trace les notifications restaurant + confirmations
   client (remplace mail/SMS réels en démo).
+
+## Charte graphique (personnalisation des couleurs)
+
+Onglet *Charte* du back-office. Les couleurs choisies s'appliquent en temps réel
+au widget et à la web app client (variables CSS injectées via `applyBranding`).
+Quatre méthodes de saisie, **offline sauf la dernière** :
+
+| Méthode | Fonctionnement | Connexion |
+|---|---|---|
+| **Nuancier HEX manuel** | color pickers + champs HEX, aperçu live | aucune |
+| **Import logo / image** | extraction des couleurs dominantes dans le navigateur (canvas) | aucune |
+| **Import charte PDF (DA)** | lecture des opérateurs couleur du PDF (`rg`/`k`/hex), flux dé-compressés via `DecompressionStream` natif | aucune |
+| **Lien du site** | le serveur récupère la page + CSS et extrait la palette (`server/colors.js`, garde-fou anti-SSRF) | **internet requis** |
+
+Chaque extraction propose des pastilles cliquables → applique la couleur à la
+*principale* ou à l'*accent* (sélecteur). En démo « ouverte » sans réseau, seule
+la lecture par URL est indisponible et échoue proprement ; les trois autres
+fonctionnent hors-ligne.
 
 ## Correspondance avec l'offre
 
@@ -104,14 +139,17 @@ Voir `public/embed-demo.html` pour un exemple en contexte.
 ```
 restaurant-saas/
   server/
-    engine.js        # moteur anti-surbooking (fonctions pures, testées)
-    db.js            # schéma SQLite (une table par option → évolutif)
+    engine.js        # moteur anti-surbooking + double service (fonctions pures, testées)
+    db.js            # schéma SQLite + migrations additives (une table par option → évolutif)
     repo.js          # accès données + création transactionnelle
+    colors.js        # extraction de palette depuis une URL (seul module réseau)
     routes/index.js  # API JSON (client + admin)
     server.js        # serveur HTTP + routeur + statique (zéro dépendance)
     seed.js          # restaurant de démonstration
-  public/            # web app client, widget, back-office (vanilla JS, zéro build)
-  tests/engine.test.js
+  public/
+    js/palette.js    # extraction couleurs logo/PDF côté navigateur (offline)
+    ...              # web app client, widget, back-office (vanilla JS, zéro build)
+  tests/engine.test.js   # 11 tests (anti-surbooking, double service, capacités)
 ```
 
 ### Pistes d'évolution (multi-tenant, prod)

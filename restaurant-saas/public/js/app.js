@@ -1,5 +1,5 @@
 // Controleur de la web app client (index.html).
-import { api, SLUG, toast, esc, fmtDate } from './api.js';
+import { api, SLUG, toast, esc, fmtDate, applyBranding } from './api.js';
 import { mountBooking } from './booking.js';
 
 const $ = (s) => document.querySelector(s);
@@ -8,6 +8,7 @@ const $ = (s) => document.querySelector(s);
   let R;
   try { R = await api.get(`/api/r/${SLUG}`); }
   catch { $('#info-card').innerHTML = 'Restaurant introuvable.'; return; }
+  applyBranding(R.branding);
   document.title = `Reserver — ${R.name}`;
   document.querySelector('.brandmark').innerHTML = `${esc(R.name)}<span class="dot">.</span>`;
 

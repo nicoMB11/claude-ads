@@ -34,6 +34,25 @@ export function fmtDate(iso) {
   const d = new Date(`${iso}T12:00:00`);
   return d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
 }
+// --- Charte graphique -------------------------------------------------------
+export function shade(hex, pct) {
+  // pct<0 assombrit, pct>0 eclaircit
+  const h = hex.replace('#', '');
+  if (h.length !== 6) return hex;
+  const n = [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const adj = n.map((v) => Math.max(0, Math.min(255, Math.round(v + (pct < 0 ? v : 255 - v) * pct))));
+  return '#' + adj.map((v) => v.toString(16).padStart(2, '0')).join('');
+}
+export function applyBranding(branding) {
+  if (!branding) return;
+  const root = document.documentElement.style;
+  if (branding.primary) {
+    root.setProperty('--brand', branding.primary);
+    root.setProperty('--brand-dark', shade(branding.primary, -0.25));
+  }
+  if (branding.accent) root.setProperty('--gold', branding.accent);
+}
+
 export function statusBadge(s) {
   const map = {
     confirmed: ['green', 'Confirmee'], pending: ['amber', 'A valider'],

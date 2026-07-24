@@ -71,6 +71,25 @@ test('ANTI-SURBOOKING : la table occupee n\'est pas re-attribuee sur creneau che
   assert.equal(r3.reason, 'no_table');
 });
 
+test('DOUBLE SERVICE désactivé : une table = un seul groupe pour tout le service', () => {
+  const svcSimple = [{ ...services[0], allow_double_seating: 0, turn_time_min: 60 }];
+  const oneTable = [tables[0]]; // une seule 2-places
+  // Groupe de 2 a 12:00. Avec double service OFF, la table est prise tout le service.
+  const reservations = [{ id: 50, date: DATE, time: '12:00', duration_min: 60, party_size: 2, status: 'confirmed', table_ids: '[1]' }];
+  const ctx = { tables: oneTable, services: svcSimple, reservations };
+  // Meme apres 60 min (13:00), la table reste bloquee jusqu'a la fin du service.
+  assert.equal(canSeat(restaurant, ctx, { date: DATE, time: '13:00', partySize: 2 }).ok, false);
+});
+
+test('DOUBLE SERVICE activé : la table tourne apres la duree de repas', () => {
+  const svcDouble = [{ ...services[0], allow_double_seating: 1, turn_time_min: 60 }];
+  const oneTable = [tables[0]];
+  const reservations = [{ id: 51, date: DATE, time: '12:00', duration_min: 60, party_size: 2, status: 'confirmed', table_ids: '[1]' }];
+  const ctx = { tables: oneTable, services: svcDouble, reservations };
+  // A 13:00 (apres 60 min, buffer 0) la table est de nouveau libre.
+  assert.equal(canSeat(restaurant, ctx, { date: DATE, time: '13:00', partySize: 2 }).ok, true);
+});
+
 test('creneau libere apres la duree du repas (pas de chevauchement)', () => {
   // Table 1 occupee 12:00->13:30. A 13:30 (buffer 0) elle redevient disponible.
   const reservations = [{ id: 20, date: DATE, time: '12:00', duration_min: 90, party_size: 2, status: 'confirmed', table_ids: '[1]' }];
