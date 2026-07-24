@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reservation</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <style>
+    body { background: transparent; }
+    .widget { max-width: 460px; margin: 0 auto; padding: 8px; }
+  </style>
+</head>
+<body>
+  <div class="widget">
+    <div class="card">
+      <h2 id="w-title" style="margin-bottom:2px">Reserver une table</h2>
+      <p class="muted small" style="margin-top:0">Disponibilites en temps reel</p>
+      <div id="booking"></div>
+    </div>
+  </div>
+  <script type="module">
+    import { mountBooking } from '/js/booking.js';
+    import { api } from '/js/api.js';
+    const slug = new URLSearchParams(location.search).get('r') || 'petit-comptoir';
+    api.get(`/api/r/${slug}`).then((R) => { document.getElementById('w-title').textContent = `Reserver — ${R.name}`; }).catch(() => {});
+    mountBooking(document.getElementById('booking'), slug, { source: 'widget' });
+  </script>
+</body>
+</html>

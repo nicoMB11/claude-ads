@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Espace restaurant — Reservations</title>
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+  <div class="top">
+    <div class="wrap spread">
+      <div class="brandmark" id="rname">Espace restaurant<span class="dot">.</span></div>
+      <div>
+        <a class="navlink" href="/" target="_blank">Voir la page client ↗</a>
+        <a class="navlink" href="/embed-demo.html" target="_blank">Demo widget ↗</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap" style="padding-top:24px;padding-bottom:60px">
+    <div class="tabs" id="tabs">
+      <div class="tab active" data-tab="dash">Tableau de bord</div>
+      <div class="tab" data-tab="floor">Plan de salle</div>
+      <div class="tab" data-tab="resa">Reservations</div>
+      <div class="tab" data-tab="config">Configuration</div>
+      <div class="tab" data-tab="options">Options</div>
+      <div class="tab" data-tab="groups">Demandes</div>
+      <div class="tab" data-tab="outbox">Notifications</div>
+    </div>
+
+    <section id="tab-dash" class="tabpane"></section>
+    <section id="tab-floor" class="tabpane hidden"></section>
+    <section id="tab-resa" class="tabpane hidden"></section>
+    <section id="tab-config" class="tabpane hidden"></section>
+    <section id="tab-options" class="tabpane hidden"></section>
+    <section id="tab-groups" class="tabpane hidden"></section>
+    <section id="tab-outbox" class="tabpane hidden"></section>
+  </div>
+
+  <script type="module" src="/js/admin.js"></script>
+</body>
+</html>

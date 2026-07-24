@@ -1,0 +1,15 @@
+{
+  "name": "resa-saas",
+  "version": "0.1.0",
+  "description": "Demo SaaS de reservation pour restaurant (moteur anti-surbooking base sur le plan de salle reel).",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "scripts": {
+    "start": "node --no-warnings server/server.js",
+    "seed": "node --no-warnings server/seed.js --reset",
+    "dev": "node --no-warnings --watch server/server.js"
+  }
+}

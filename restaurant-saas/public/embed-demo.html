@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Site vitrine (demo) — widget de reservation embarque</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <style>
+    /* Faux site restaurant, pour montrer le widget "en contexte". */
+    .hero { background: linear-gradient(120deg,#2a1f1a,#5a3226); color:#fff; padding:60px 0; }
+    .hero h1 { font-size: 2.6rem; }
+    .menu-item { padding:12px 0; border-bottom:1px solid var(--line); }
+  </style>
+</head>
+<body>
+  <div class="hero">
+    <div class="wrap">
+      <div class="brandmark" style="color:#fff">Le Petit Comptoir<span class="dot" style="color:var(--gold)">.</span></div>
+      <h1 style="margin-top:24px">Bistrot de saison, cuisine du marche</h1>
+      <p style="opacity:.85;max-width:520px">Ceci est une page vitrine <strong>fictive</strong> pour montrer le widget de reservation integre sur le site d'un restaurant via <code>embed.js</code>.</p>
+    </div>
+  </div>
+
+  <div class="wrap grid" style="grid-template-columns:1.3fr 1fr;gap:30px;padding:40px 20px;align-items:start">
+    <div class="card">
+      <h2>Notre carte</h2>
+      <div class="menu-item"><strong>Oeuf parfait, girolles</strong><div class="muted small">14 €</div></div>
+      <div class="menu-item"><strong>Ris de veau, jus corse</strong><div class="muted small">28 €</div></div>
+      <div class="menu-item"><strong>Baba au rhum</strong><div class="muted small">11 €</div></div>
+      <p class="small muted" style="margin-top:20px">Le bloc a droite est servi depuis le SaaS dans une iframe isolee. →</p>
+    </div>
+
+    <!-- ▼▼▼ Integration : une div + le script suffisent ▼▼▼ -->
+    <div id="resa-widget"></div>
+    <script src="/embed.js" data-restaurant="petit-comptoir" data-target="#resa-widget"></script>
+    <!-- ▲▲▲ ------------------------------------------------ ▲▲▲ -->
+  </div>
+
+  <style>@media (max-width:820px){.wrap.grid{grid-template-columns:1fr!important}}</style>
+</body>
+</html>

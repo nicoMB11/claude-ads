@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reserver — Le Petit Comptoir</title>
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+  <div class="top">
+    <div class="wrap spread">
+      <div class="brandmark">Le Petit Comptoir<span class="dot">.</span></div>
+      <div>
+        <a class="navlink active" href="/">Reserver</a>
+        <a class="navlink" href="/admin.html">Espace restaurant</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap" style="padding-top:26px;padding-bottom:60px">
+    <div class="grid" style="grid-template-columns:1.1fr .9fr;align-items:start" id="layout">
+      <!-- Colonne reservation -->
+      <div class="card">
+        <h1 style="margin-bottom:2px">Reserver une table</h1>
+        <p class="muted small" style="margin-top:0">Confirmation immediate selon les disponibilites reelles de la salle.</p>
+        <div id="booking"></div>
+      </div>
+
+      <!-- Colonne infos restaurant -->
+      <div class="grid">
+        <div class="card" id="info-card"><p class="muted">Chargement...</p></div>
+        <div class="card hidden" id="events-card">
+          <h2>Evenements a venir</h2>
+          <div id="events-list"></div>
+        </div>
+        <div class="card hidden" id="group-card">
+          <h2>Groupe ou privatisation</h2>
+          <p class="muted small">Pour un evenement, un groupe ou une privatisation, laissez-nous vos details.</p>
+          <button class="btn subtle sm" id="open-group">Faire une demande</button>
+          <div id="group-form" class="hidden" style="margin-top:14px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/js/app.js"></script>
+  <style>@media (max-width:820px){#layout{grid-template-columns:1fr!important}}</style>
+</body>
+</html>
