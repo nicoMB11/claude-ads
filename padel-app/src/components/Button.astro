@@ -1,0 +1,45 @@
+---
+/**
+ * Bouton / lien d'action. Trois styles dérivés de la charte :
+ *  - principal   : orange plein (action & conversion)
+ *  - secondaire  : contour marine
+ *  - lien        : lien souligné discret
+ * Rendu en <a> si `href`, sinon en <button>.
+ */
+interface Props {
+  href?: string;
+  style?: 'principal' | 'secondaire' | 'lien';
+  type?: 'button' | 'submit';
+  class?: string;
+  [key: string]: any;
+}
+const {
+  href,
+  style = 'principal',
+  type = 'button',
+  class: className = '',
+  ...rest
+} = Astro.props;
+
+const base =
+  'inline-flex items-center justify-center gap-2 font-semibold rounded-lg text-sm transition-all duration-200 ease-out-soft focus-visible:outline-offset-2';
+
+const styles: Record<string, string> = {
+  principal:
+    'bg-orange text-blanc px-6 py-3 hover:bg-orange-600 active:translate-y-px shadow-soft',
+  secondaire:
+    'bg-transparent text-marine px-6 py-3 border-2 border-marine hover:bg-marine hover:text-blanc active:translate-y-px',
+  lien: 'text-marine underline underline-offset-4 decoration-2 decoration-orange hover:text-orange px-0 py-1',
+};
+
+const cls = `${base} ${styles[style] ?? styles.principal} ${className}`;
+const Tag = href ? 'a' : 'button';
+---
+
+<Tag
+  class={cls}
+  {...(href ? { href } : { type })}
+  {...rest}
+>
+  <slot />
+</Tag>

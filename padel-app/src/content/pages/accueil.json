@@ -1,0 +1,130 @@
+{
+  "meta": {
+    "titre": "Padel App — Le logiciel pour organiser vos tournois de padel",
+    "description": "Padel App prend le relais là où les outils fédéraux s'arrêtent : tableau de tournoi, planning, convocations par vagues et scores en direct. Pour les clubs, les juges-arbitres et les joueurs.",
+    "ogImage": "/og/accueil.png"
+  },
+
+  "hero": {
+    "titre": "Le tournoi de padel, enfin à la hauteur du jeu.",
+    "sousTitre": "Padel App prend le relais là où les outils fédéraux s'arrêtent : tableaux, planning, convocations et scores en direct. Pour les clubs, pour les juges-arbitres, et pour les joueurs qui veulent enfin savoir quand ils jouent.",
+    "boutons": [
+      { "libelle": "Je suis joueur", "href": "/joueurs", "style": "principal" },
+      { "libelle": "Je gère des tournois", "href": "/clubs", "style": "secondaire" }
+    ],
+    "bracket": {
+      "titre": "Tableau en direct",
+      "sousTitre": "Tournoi du club pilote · exemple",
+      "labelLive": "EN DIRECT",
+      "colonneDemies": "Demi-finales",
+      "colonneFinale": "Finale",
+      "demies": [
+        {
+          "statut": "termine",
+          "equipeA": { "nom": "Dubois / Perez", "score": "6-3 · 6-4", "gagnant": true },
+          "equipeB": { "nom": "Léa / Manon", "score": "3-6 · 4-6", "gagnant": false }
+        },
+        {
+          "statut": "live",
+          "equipeA": { "nom": "Nadeau / Riva", "score": "6-4 · 5-5", "gagnant": false },
+          "equipeB": { "nom": "Costa / Meyer", "score": "4-6 · 5-5", "gagnant": false }
+        }
+      ],
+      "finale": {
+        "statut": "a-venir",
+        "labelAttente": "Terrain 1 · en attente",
+        "equipeA": { "nom": "Dubois / Perez", "score": "", "gagnant": false },
+        "equipeB": { "nom": "Vainqueur demi 2", "score": "", "gagnant": false }
+      }
+    }
+  },
+
+  "constat": {
+    "surtitre": "Le constat",
+    "titre": "Le tournoi commence quand l'inscription s'arrête.",
+    "texte": "L'inscription et l'homologation, la fédération s'en occupe très bien. Ce qui vient après, beaucoup moins. Le tableau se fait sur Excel, le planning se bricole la veille au soir, les convocations partent par WhatsApp une par une. Et le joueur regarde une feuille A4 scotchée au mur pour savoir s'il joue dans dix minutes ou dans trois heures."
+  },
+
+  "publics": {
+    "surtitre": "Trois publics, un seul outil",
+    "titre": "Chacun y trouve sa place.",
+    "cartes": [
+      {
+        "surtitre": "Vous jouez",
+        "texte": "Votre horaire, votre terrain, votre tableau en direct. Tout l'historique de vos matchs et de vos résultats. Gratuit, et ça le restera.",
+        "lien": { "libelle": "Découvrir le parcours joueur", "href": "/joueurs" }
+      },
+      {
+        "surtitre": "Vous organisez",
+        "texte": "Un tournoi préparé en quelques minutes, un affichage live sur vos écrans, une compta claire. Et une expérience qui donne envie à vos joueurs de revenir.",
+        "lien": { "libelle": "Découvrir le parcours club", "href": "/clubs" }
+      },
+      {
+        "surtitre": "Vous arbitrez",
+        "texte": "Tirage conforme, tableau modifiable à la main quand il le faut, convocations par vagues, scores en direct. Vos cachets suivis au même endroit.",
+        "lien": { "libelle": "Découvrir le parcours juge-arbitre", "href": "/clubs#juges" }
+      }
+    ]
+  },
+
+  "deroule": {
+    "surtitre": "Le déroulé",
+    "titre": "De la liste d'inscrits au dernier point.",
+    "etapes": [
+      {
+        "titre": "Vos inscrits arrivent",
+        "texte": "Récupérés depuis vos outils existants, sans ressaisie."
+      },
+      {
+        "titre": "Le tableau se génère",
+        "texte": "Têtes de série, exemptions, poules, conforme en un clic. Et si le tirage ne vous convient pas, vous reprenez la main et vous déplacez les paires vous-même."
+      },
+      {
+        "titre": "Les joueurs sont prévenus",
+        "texte": "Convocations par vagues, générées et envoyées automatiquement."
+      },
+      {
+        "titre": "Le tournoi se joue en direct",
+        "texte": "Scores saisis au bord du terrain, tableau à jour partout à la seconde."
+      }
+    ]
+  },
+
+  "complementarite": {
+    "titre": "Padel App ne remplace pas vos outils officiels.",
+    "texte": "L'homologation, les licences, la remontée du classement restent chez la fédération, et c'est très bien ainsi. Padel App s'occupe de tout le reste — la partie où vous perdez vos soirées."
+  },
+
+  "preuve": {
+    "surtitre": "Sur le terrain",
+    "titre": "Ce qu'en dit le club pilote.",
+    "citation": {
+      "texte": "[À COMPLÉTER — citation du juge-arbitre du club pilote : une phrase concrète sur le temps gagné le jour du tournoi.]",
+      "auteur": "[À COMPLÉTER — Prénom Nom]",
+      "role": "[À COMPLÉTER — Rôle, ex. juge-arbitre du club pilote]",
+      "photo": "/images/pilote-portrait.webp",
+      "photoAlt": "Portrait du juge-arbitre du club pilote"
+    },
+    "chiffre": {
+      "valeur": "[À COMPLÉTER]",
+      "unite": "",
+      "libelle": "de temps gagné par tournoi"
+    }
+  },
+
+  "ctaFinal": {
+    "titre": "Prêt à changer vos tournois ?",
+    "colonnes": [
+      {
+        "surtitre": "Joueurs",
+        "texte": "Créez votre compte et suivez vos tournois en direct.",
+        "bouton": { "libelle": "Créer mon compte", "href": "/joueurs", "style": "principal" }
+      },
+      {
+        "surtitre": "Clubs & juges-arbitres",
+        "texte": "Voyez Padel App en action sur votre prochain tournoi.",
+        "bouton": { "libelle": "Demander une démo", "href": "/clubs#demo", "style": "secondaire" }
+      }
+    ]
+  }
+}

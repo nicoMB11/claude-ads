@@ -1,0 +1,30 @@
+---
+/**
+ * En-tête de section : surtitre (optionnel), titre, intro (optionnelle).
+ */
+interface Props {
+  surtitre?: string;
+  titre: string;
+  intro?: string;
+  align?: 'left' | 'center';
+  tone?: 'clair' | 'sombre';
+  class?: string;
+}
+const { surtitre, titre, intro, align = 'left', tone = 'clair', class: className = '' } = Astro.props;
+const alignCls = align === 'center' ? 'text-center mx-auto' : '';
+const titleColor = tone === 'sombre' ? 'text-blanc' : 'text-marine';
+const introColor = tone === 'sombre' ? 'text-blanc/70' : 'text-gris-600';
+---
+
+<div class={`max-w-2xl ${alignCls} ${className}`}>
+  {
+    surtitre && (
+      <p class="mb-3 inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-orange">
+        <span class="h-1.5 w-1.5 rounded-full bg-vert" aria-hidden="true"></span>
+        {surtitre}
+      </p>
+    )
+  }
+  <h2 class={`text-2xl md:text-3xl font-bold ${titleColor}`}>{titre}</h2>
+  {intro && <p class={`mt-4 text-base leading-relaxed ${introColor}`}>{intro}</p>}
+</div>

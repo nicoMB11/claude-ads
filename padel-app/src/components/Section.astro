@@ -1,0 +1,34 @@
+---
+/**
+ * Conteneur de section. Rythme vertical géré uniquement en PADDING (jamais en
+ * margin) pour éviter tout effondrement de marges entre sections adjacentes.
+ *
+ * Props :
+ *   bg      : 'blanc' | 'gris' | 'marine'  (fond de la section)
+ *   id      : ancre
+ *   size    : 'normal' | 'compact'
+ *   as      : balise HTML (section par défaut)
+ */
+interface Props {
+  bg?: 'blanc' | 'gris' | 'marine';
+  id?: string;
+  size?: 'normal' | 'compact';
+  as?: string;
+  class?: string;
+}
+const { bg = 'blanc', id, size = 'normal', as = 'section', class: className = '' } = Astro.props;
+
+const bgClass: Record<string, string> = {
+  blanc: 'bg-blanc text-marine',
+  gris: 'bg-gris text-marine',
+  marine: 'bg-marine text-blanc',
+};
+const pad = size === 'compact' ? 'py-12 md:py-16' : 'py-16 md:py-24';
+const Tag = as as any;
+---
+
+<Tag id={id} class={`${bgClass[bg]} ${pad} ${className}`}>
+  <div class="container-x">
+    <slot />
+  </div>
+</Tag>

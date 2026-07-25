@@ -1,0 +1,65 @@
+{
+  "meta": {
+    "titre": "À propos de Padel App — Un outil né sur un terrain",
+    "description": "Padel App est né du constat d'un juge-arbitre qui perdait ses soirées sur Excel. L'histoire du projet, l'équipe et le déploiement en cours.",
+    "ogImage": "/og/a-propos.png"
+  },
+
+  "hero": {
+    "titre": "Un outil né sur un terrain, pas dans un bureau.",
+    "sousTitre": "Padel App n'est pas parti d'un cahier des charges. Il est parti d'une soirée de trop passée à refaire un tableau sur Excel."
+  },
+
+  "recit": [
+    {
+      "surtitre": "01 — Le constat",
+      "titre": "Un juge-arbitre qui perd ses soirées",
+      "texte": "Tout commence avec un juge-arbitre en exercice. Les tournois s'enchaînent, et chacun se prépare de la même façon : un tableau bricolé sur Excel, un planning refait la veille au soir, des convocations envoyées une par une. Le jour J, les joueurs défilent pour demander à quelle heure ils jouent. Le sport est moderne ; les outils, non.",
+      "image": "/images/apropos-constat.webp",
+      "imageAlt": "[À COMPLÉTER — photo d'illustration : le constat sur le terrain]"
+    },
+    {
+      "surtitre": "02 — La rencontre",
+      "titre": "Du terrain au premier tournoi géré de bout en bout",
+      "texte": "De ce constat naît une idée simple : et si tout ce qui vient après l'inscription tenait dans un seul outil ? La rencontre avec le développement transforme l'idée en produit. Un premier tournoi est géré de bout en bout — tirage, planning, convocations par vagues, scores en direct. Ce qui prenait des soirées tient désormais dans quelques clics.",
+      "image": "/images/apropos-rencontre.webp",
+      "imageAlt": "[À COMPLÉTER — photo d'illustration : la conception du produit]"
+    },
+    {
+      "surtitre": "03 — Aujourd'hui",
+      "titre": "Le déploiement, club par club",
+      "texte": "Padel App est aujourd'hui en test dans un club pilote et se déploie progressivement. La promesse reste la même : ne rien retirer à la fédération, et tout simplifier autour. Le tableau, le planning, les convocations, le direct — et l'expérience du joueur le jour du tournoi.",
+      "image": "/images/apropos-aujourdhui.webp",
+      "imageAlt": "[À COMPLÉTER — photo d'illustration : le déploiement en club]"
+    }
+  ],
+
+  "equipe": {
+    "surtitre": "L'équipe",
+    "titre": "Les visages derrière Padel App",
+    "note": "[À COMPLÉTER — remplacer par les vrais membres de l'équipe : prénom, nom, rôle et photo.]",
+    "membres": [
+      {
+        "nom": "[À COMPLÉTER — Prénom Nom]",
+        "role": "[À COMPLÉTER — Fondateur / juge-arbitre]",
+        "photo": "/images/equipe-1.webp",
+        "photoAlt": "[À COMPLÉTER — portrait du membre de l'équipe]"
+      },
+      {
+        "nom": "[À COMPLÉTER — Prénom Nom]",
+        "role": "[À COMPLÉTER — Rôle]",
+        "photo": "/images/equipe-2.webp",
+        "photoAlt": "[À COMPLÉTER — portrait du membre de l'équipe]"
+      }
+    ]
+  },
+
+  "cta": {
+    "titre": "Envie de faire partie de l'aventure ?",
+    "texte": "Que vous jouiez ou que vous organisiez, Padel App se construit avec ses premiers utilisateurs.",
+    "boutons": [
+      { "libelle": "Je suis joueur", "href": "/joueurs", "style": "principal" },
+      { "libelle": "Je gère des tournois", "href": "/clubs#demo", "style": "secondaire" }
+    ]
+  }
+}

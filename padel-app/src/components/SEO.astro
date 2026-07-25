@@ -1,0 +1,78 @@
+---
+import { getEntry } from 'astro:content';
+
+interface Props {
+  titre: string;
+  description: string;
+  ogImage?: string;
+  type?: 'website' | 'article';
+  structuredData?: boolean;
+}
+const {
+  titre,
+  description,
+  ogImage = '/og/accueil.png',
+  type = 'website',
+  structuredData = false,
+} = Astro.props;
+
+const site = (await getEntry('global', 'site'))!.data;
+const canonical = new URL(Astro.url.pathname, Astro.site).href;
+const ogUrl = new URL(ogImage, Astro.site).href;
+
+// Données structurées : Organization + SoftwareApplication (page d'accueil).
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'Organization',
+      name: site.nom,
+      url: Astro.site?.href,
+      slogan: site.baseline,
+      description:
+        "Padel App est un logiciel pour organiser les tournois de padel : tableau, planning, convocations par vagues et scores en direct, en complément des outils de la fédération.",
+    },
+    {
+      '@type': 'SoftwareApplication',
+      name: site.nom,
+      applicationCategory: 'BusinessApplication',
+      operatingSystem: 'Web, iOS, Android',
+      description:
+        "Organisez vos tournois de padel de bout en bout : tirage conforme et modifiable, planning multi-terrains, convocations par vagues, mode TV et scores en direct.",
+      offers: {
+        '@type': 'Offer',
+        price: '0',
+        priceCurrency: 'EUR',
+        description: "Application joueur gratuite. Conditions d'accès clubs communiquées à la rentrée.",
+      },
+    },
+  ],
+};
+---
+
+<title>{titre}</title>
+<meta name="description" content={description} />
+<link rel="canonical" href={canonical} />
+
+<!-- Open Graph -->
+<meta property="og:type" content={type} />
+<meta property="og:site_name" content={site.nom} />
+<meta property="og:title" content={titre} />
+<meta property="og:description" content={description} />
+<meta property="og:url" content={canonical} />
+<meta property="og:image" content={ogUrl} />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:locale" content="fr_FR" />
+
+<!-- Twitter -->
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content={titre} />
+<meta name="twitter:description" content={description} />
+<meta name="twitter:image" content={ogUrl} />
+
+{
+  structuredData && (
+    <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+  )
+}

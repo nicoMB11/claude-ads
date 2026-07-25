@@ -1,0 +1,139 @@
+---
+import { getEntry } from 'astro:content';
+import Base from '../layouts/Base.astro';
+import Section from '../components/Section.astro';
+import Button from '../components/Button.astro';
+import Mockup from '../components/Mockup.astro';
+
+const { meta, hero, blocs, honnetete, creerCompte } = (
+  await getEntry('pages', 'joueurs')
+)!.data as any;
+---
+
+<Base titre={meta.titre} description={meta.description} ogImage={meta.ogImage}>
+  <!-- HERO -->
+  <Section bg="marine" size="compact">
+    <div class="reveal mx-auto max-w-3xl text-center">
+      <h1 class="text-3xl font-bold text-blanc md:text-4xl">{hero.titre}</h1>
+      <p class="mt-6 text-base leading-relaxed text-blanc/75 md:text-lg">{hero.sousTitre}</p>
+      <div class="mt-8 flex justify-center">
+        {hero.boutons.map((b: any) => (
+          <Button href={b.href} style={b.style}>{b.libelle}</Button>
+        ))}
+      </div>
+    </div>
+  </Section>
+
+  <!-- BLOCS EN ALTERNANCE -->
+  {blocs.map((bloc: any, i: number) => (
+    <Section bg={bloc.miseEnAvant ? 'gris' : 'blanc'}>
+      <div
+        class:list={[
+          'reveal grid items-center gap-10 lg:grid-cols-2',
+          i % 2 === 1 ? 'lg:[&>*:first-child]:order-2' : '',
+        ]}
+      >
+        <div>
+          {bloc.badge && (
+            <p class="mb-3 inline-block rounded-full bg-orange px-3 py-1 text-xs font-semibold text-blanc">
+              {bloc.badge}
+            </p>
+          )}
+          <p class="text-sm font-semibold uppercase tracking-wide text-orange">{bloc.surtitre}</p>
+          <h2
+            class:list={[
+              'mt-2 font-bold text-marine',
+              bloc.miseEnAvant ? 'text-2xl md:text-3xl' : 'text-xl md:text-2xl',
+            ]}
+          >
+            {bloc.titre}
+          </h2>
+          <p class="mt-4 max-w-xl text-base leading-relaxed text-gris-600">{bloc.texte}</p>
+        </div>
+        <div>
+          <Mockup type={bloc.visuel} alt={bloc.imageAlt} />
+        </div>
+      </div>
+    </Section>
+  ))}
+
+  <!-- SECTION HONNÊTETÉ -->
+  <Section bg="marine" size="compact">
+    <div class="reveal mx-auto flex max-w-3xl flex-col gap-4 rounded-xl border border-blanc/15 bg-blanc/[0.04] p-8 text-center">
+      <h2 class="text-xl font-bold text-blanc md:text-2xl">{honnetete.titre}</h2>
+      <p class="text-base leading-relaxed text-blanc/75">{honnetete.texte}</p>
+    </div>
+  </Section>
+
+  <!-- CRÉER MON COMPTE -->
+  <Section bg="blanc" id="creer-compte">
+    <div class="reveal mx-auto max-w-xl text-center">
+      <h2 class="text-2xl font-bold text-marine md:text-3xl">{creerCompte.titre}</h2>
+      <p class="mt-4 text-base leading-relaxed text-gris-600">{creerCompte.texte}</p>
+
+      <form id="joueur-form" class="mt-8 flex flex-col gap-3 sm:flex-row" novalidate>
+        <label for="joueur-email" class="sr-only">{creerCompte.champLabel}</label>
+        <input
+          id="joueur-email"
+          name="email"
+          type="email"
+          required
+          placeholder={creerCompte.champPlaceholder}
+          class="w-full flex-1 rounded-lg border border-gris-200 bg-blanc px-4 py-3 text-sm text-marine placeholder:text-gris-400 focus:border-orange"
+        />
+        <button
+          type="submit"
+          class="inline-flex items-center justify-center rounded-lg bg-orange px-6 py-3 text-sm font-semibold text-blanc shadow-soft transition-colors hover:bg-orange-600"
+        >
+          {creerCompte.bouton}
+        </button>
+      </form>
+
+      <p id="joueur-succes" role="status" hidden class="mt-4 rounded-lg border border-vert bg-vert/10 px-4 py-3 text-sm font-semibold text-marine">
+        {creerCompte.messageSucces}
+      </p>
+      <p id="joueur-erreur" role="alert" hidden class="mt-4 rounded-lg border border-orange bg-orange/10 px-4 py-3 text-sm font-semibold text-marine">
+        {creerCompte.messageErreur}
+      </p>
+    </div>
+  </Section>
+
+  <script>
+    const f = document.getElementById('joueur-form') as HTMLFormElement | null;
+    const ok = document.getElementById('joueur-succes');
+    const ko = document.getElementById('joueur-erreur');
+    if (f && ok && ko) {
+      f.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        ok.hidden = true;
+        ko.hidden = true;
+        if (!f.checkValidity()) {
+          f.reportValidity();
+          return;
+        }
+        const endpoint = import.meta.env.PUBLIC_FORM_ENDPOINT ?? '';
+        if (!endpoint) {
+          // Sans endpoint configuré, on affiche quand même la confirmation locale.
+          f.reset();
+          ok.hidden = false;
+          return;
+        }
+        try {
+          const res = await fetch(endpoint, {
+            method: 'POST',
+            body: new FormData(f),
+            headers: { Accept: 'application/json' },
+          });
+          if (res.ok) {
+            f.reset();
+            ok.hidden = false;
+          } else {
+            ko.hidden = false;
+          }
+        } catch {
+          ko.hidden = false;
+        }
+      });
+    }
+  </script>
+</Base>

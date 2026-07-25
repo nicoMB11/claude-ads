@@ -1,0 +1,101 @@
+{
+  "meta": {
+    "titre": "Padel App pour les clubs et juges-arbitres — Organisez vos tournois",
+    "description": "Tirage conforme et modifiable, planning multi-terrains, convocations par vagues, mode TV et compta claire. Organisez vos tournois de padel sans y passer vos soirées.",
+    "ogImage": "/og/clubs.png"
+  },
+
+  "hero": {
+    "titre": "Organisez vos tournois sans y passer vos soirées.",
+    "sousTitre": "Le tableau, le planning, les convocations, le direct et la compta au même endroit. Vous gardez vos outils et vos inscrits habituels : Padel App complète, ne remplace pas.",
+    "boutons": [
+      { "libelle": "Demander une démo", "href": "#demo", "style": "principal" }
+    ]
+  },
+
+  "avantApres": {
+    "surtitre": "Avant / après",
+    "titre": "La même journée de tournoi, en deux versions.",
+    "colonneAvant": "Aujourd'hui",
+    "colonneApres": "Avec Padel App",
+    "lignes": [
+      { "avant": "Le tableau se refait sur Excel", "apres": "Généré en un clic, modifiable à la main" },
+      { "avant": "Les convocations partent une par une", "apres": "Vagues générées et envoyées automatiquement" },
+      { "avant": "Les scores se notent sur papier", "apres": "Saisis au bord du terrain, en direct partout" },
+      { "avant": "Les joueurs viennent vous demander l'horaire", "apres": "Ils l'ont sur leur téléphone" },
+      { "avant": "Les paiements se suivent sur un carnet", "apres": "Suivi par joueur, cachets juge-arbitre inclus" }
+    ]
+  },
+
+  "blocs": {
+    "surtitre": "Ce que fait Padel App",
+    "titre": "Tout ce qui vient après l'inscription.",
+    "items": [
+      {
+        "id": "juges",
+        "titre": "Un tirage conforme, et la main quand il le faut",
+        "texte": "Têtes de série, poids des paires, exemptions : le tirage applique les règles. Et quand le hasard fait mal les choses, vous déplacez les paires vous-même, avec confirmation avant enregistrement et possibilité d'annuler.",
+        "public": "Juge-arbitre"
+      },
+      {
+        "id": "planning",
+        "titre": "Le planning multi-terrains",
+        "texte": "Vos courts, vos créneaux, vos vagues. Le planning se construit seul et se réajuste quand un match déborde.",
+        "public": "Juge-arbitre"
+      },
+      {
+        "id": "mode-tv",
+        "titre": "Le mode TV",
+        "texte": "Le tableau en direct sur les écrans du club.",
+        "public": "Club"
+      },
+      {
+        "id": "compta",
+        "titre": "La compta au clair",
+        "texte": "Paiements par joueur, modes de règlement, options restaurant, cachets juge-arbitre.",
+        "public": "Club"
+      },
+      {
+        "id": "inscriptions",
+        "titre": "Des inscriptions en plus, pas à la place",
+        "texte": "Les joueurs de Padel App découvrent vos tournois et demandent leur place. Vous gardez vos outils et vos inscrits habituels : on complète, on ne remplace pas.",
+        "public": "Club"
+      }
+    ]
+  },
+
+  "complementarite": {
+    "titre": "Padel App ne remplace pas vos outils officiels.",
+    "texte": "L'homologation, les licences, la remontée du classement restent chez la fédération, et c'est très bien ainsi. Padel App s'occupe de tout le reste — la partie où vous perdez vos soirées."
+  },
+
+  "tarifs": {
+    "surtitre": "Accès",
+    "titre": "Les conditions d'accès arrivent.",
+    "message": "On est en phase de test. Padel App est déployé auprès de clubs pilotes. Les conditions d'accès seront communiquées à la rentrée. En attendant, l'accompagnement du premier tournoi est offert.",
+    "offreMiseEnAvant": "Premier tournoi accompagné, offert",
+    "grille": []
+  },
+
+  "demo": {
+    "surtitre": "Démonstration",
+    "titre": "Demander une démo",
+    "texte": "Dites-nous en quelques mots qui vous êtes, on vous recontacte pour organiser une démonstration sur votre prochain tournoi.",
+    "champs": {
+      "nom": { "label": "Nom", "placeholder": "Votre nom", "requis": true },
+      "club": { "label": "Club", "placeholder": "Nom de votre club", "requis": true },
+      "role": {
+        "label": "Rôle",
+        "requis": true,
+        "options": ["Club", "Juge-arbitre", "Groupe multi-sites"]
+      },
+      "email": { "label": "E-mail", "placeholder": "vous@club.fr", "requis": true },
+      "telephone": { "label": "Téléphone", "placeholder": "06 00 00 00 00", "requis": false },
+      "tournois": { "label": "Nombre de tournois par an", "placeholder": "Ex. 8", "requis": false }
+    },
+    "bouton": "Envoyer ma demande",
+    "messageSucces": "Merci ! Votre demande est bien partie. On vous recontacte très vite pour organiser la démo.",
+    "messageErreur": "L'envoi a échoué. Vérifiez vos informations et réessayez, ou écrivez-nous directement.",
+    "mentionRgpd": "Vos informations servent uniquement à vous recontacter au sujet de Padel App. Voir notre politique de confidentialité."
+  }
+}

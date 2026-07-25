@@ -1,0 +1,24 @@
+---
+import Base from '../layouts/Base.astro';
+import Button from '../components/Button.astro';
+import TrajectoryArc from '../components/TrajectoryArc.astro';
+---
+
+<Base
+  titre="Page introuvable — Padel App"
+  description="Cette page n'existe pas ou a été déplacée."
+>
+  <section class="bg-marine">
+    <div class="container-x flex min-h-[70vh] flex-col items-center justify-center py-24 text-center">
+      <p class="text-4xl font-bold text-vert">404</p>
+      <h1 class="mt-4 text-2xl font-bold text-blanc md:text-3xl">Balle dehors.</h1>
+      <p class="mt-4 max-w-md text-base text-blanc/70">
+        Cette page n'existe pas ou a été déplacée. Revenons sur le terrain.
+      </p>
+      <div class="mt-8">
+        <Button href="/" style="principal">Retour à l'accueil</Button>
+      </div>
+    </div>
+    <TrajectoryArc tone="sombre" class="h-14 w-full" />
+  </section>
+</Base>

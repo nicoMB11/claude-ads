@@ -1,0 +1,150 @@
+---
+/**
+ * Formulaire de demande de démo.
+ * - Aucun backend propre : envoi vers un endpoint configurable (Formspree ou
+ *   autre) via la variable d'environnement PUBLIC_FORM_ENDPOINT.
+ * - Validation côté client, messages de succès / d'erreur éditables (contenu).
+ * Voir le README (section « Formulaire ») pour la configuration.
+ */
+interface Champ {
+  label: string;
+  placeholder?: string;
+  requis?: boolean;
+  options?: string[];
+}
+interface Props {
+  data: {
+    champs: {
+      nom: Champ;
+      club: Champ;
+      role: Champ;
+      email: Champ;
+      telephone: Champ;
+      tournois: Champ;
+    };
+    bouton: string;
+    messageSucces: string;
+    messageErreur: string;
+    mentionRgpd?: string;
+  };
+}
+const { data } = Astro.props;
+const c = data.champs;
+const endpoint = import.meta.env.PUBLIC_FORM_ENDPOINT ?? '';
+const labelReq = (ch: Champ) => (ch.requis ? ' *' : '');
+---
+
+<form
+  id="demo-form"
+  class="grid gap-4 sm:grid-cols-2"
+  data-endpoint={endpoint}
+  novalidate
+>
+  <div class="sm:col-span-1">
+    <label for="f-nom" class="mb-1 block text-sm font-semibold">{c.nom.label}{labelReq(c.nom)}</label>
+    <input id="f-nom" name="nom" type="text" placeholder={c.nom.placeholder} required={c.nom.requis}
+      class="w-full rounded-lg border border-gris-200 bg-blanc px-4 py-3 text-sm text-marine placeholder:text-gris-400 focus:border-orange" />
+  </div>
+
+  <div class="sm:col-span-1">
+    <label for="f-club" class="mb-1 block text-sm font-semibold">{c.club.label}{labelReq(c.club)}</label>
+    <input id="f-club" name="club" type="text" placeholder={c.club.placeholder} required={c.club.requis}
+      class="w-full rounded-lg border border-gris-200 bg-blanc px-4 py-3 text-sm text-marine placeholder:text-gris-400 focus:border-orange" />
+  </div>
+
+  <div class="sm:col-span-2">
+    <label for="f-role" class="mb-1 block text-sm font-semibold">{c.role.label}{labelReq(c.role)}</label>
+    <select id="f-role" name="role" required={c.role.requis}
+      class="w-full rounded-lg border border-gris-200 bg-blanc px-4 py-3 text-sm text-marine focus:border-orange">
+      <option value="" disabled selected>Choisir…</option>
+      {c.role.options?.map((o) => <option value={o}>{o}</option>)}
+    </select>
+  </div>
+
+  <div class="sm:col-span-1">
+    <label for="f-email" class="mb-1 block text-sm font-semibold">{c.email.label}{labelReq(c.email)}</label>
+    <input id="f-email" name="email" type="email" placeholder={c.email.placeholder} required={c.email.requis}
+      class="w-full rounded-lg border border-gris-200 bg-blanc px-4 py-3 text-sm text-marine placeholder:text-gris-400 focus:border-orange" />
+  </div>
+
+  <div class="sm:col-span-1">
+    <label for="f-tel" class="mb-1 block text-sm font-semibold">{c.telephone.label}{labelReq(c.telephone)}</label>
+    <input id="f-tel" name="telephone" type="tel" placeholder={c.telephone.placeholder} required={c.telephone.requis}
+      class="w-full rounded-lg border border-gris-200 bg-blanc px-4 py-3 text-sm text-marine placeholder:text-gris-400 focus:border-orange" />
+  </div>
+
+  <div class="sm:col-span-2">
+    <label for="f-tournois" class="mb-1 block text-sm font-semibold">{c.tournois.label}{labelReq(c.tournois)}</label>
+    <input id="f-tournois" name="tournois" type="number" min="0" placeholder={c.tournois.placeholder} required={c.tournois.requis}
+      class="w-full rounded-lg border border-gris-200 bg-blanc px-4 py-3 text-sm text-marine placeholder:text-gris-400 focus:border-orange" />
+  </div>
+
+  <!-- Anti-spam (champ caché, invisible pour l'humain) -->
+  <input type="text" name="_gotcha" tabindex="-1" autocomplete="off" class="hidden" aria-hidden="true" />
+
+  <div class="sm:col-span-2 flex flex-col gap-3">
+    <button type="submit"
+      class="inline-flex items-center justify-center gap-2 rounded-lg bg-orange px-6 py-3 text-sm font-semibold text-blanc shadow-soft transition-colors hover:bg-orange-600 focus-visible:outline-offset-2">
+      {data.bouton}
+    </button>
+    {data.mentionRgpd && <p class="text-xs text-gris-600">{data.mentionRgpd}</p>}
+  </div>
+
+  <!-- Messages (contenu éditable) -->
+  <p id="form-succes" role="status" hidden
+    class="sm:col-span-2 rounded-lg border border-vert bg-vert/10 px-4 py-3 text-sm font-semibold text-marine">
+    {data.messageSucces}
+  </p>
+  <p id="form-erreur" role="alert" hidden
+    class="sm:col-span-2 rounded-lg border border-orange bg-orange/10 px-4 py-3 text-sm font-semibold text-marine">
+    {data.messageErreur}
+  </p>
+</form>
+
+<script>
+  const form = document.getElementById('demo-form') as HTMLFormElement | null;
+  const succes = document.getElementById('form-succes');
+  const erreur = document.getElementById('form-erreur');
+
+  if (form && succes && erreur) {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      succes.hidden = true;
+      erreur.hidden = true;
+
+      // Validation native côté client.
+      if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+      }
+
+      const endpoint = form.dataset.endpoint;
+      const data = new FormData(form);
+
+      // Endpoint non configuré : on prévient explicitement (voir README).
+      if (!endpoint) {
+        erreur.textContent =
+          "Le formulaire n'est pas encore relié à un service d'envoi. Configurez PUBLIC_FORM_ENDPOINT (voir README).";
+        erreur.hidden = false;
+        return;
+      }
+
+      try {
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          body: data,
+          headers: { Accept: 'application/json' },
+        });
+        if (res.ok) {
+          form.reset();
+          succes.hidden = false;
+          succes.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+          erreur.hidden = false;
+        }
+      } catch {
+        erreur.hidden = false;
+      }
+    });
+  }
+</script>

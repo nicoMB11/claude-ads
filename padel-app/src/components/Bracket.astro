@@ -1,0 +1,159 @@
+---
+/**
+ * SIGNATURE VISUELLE — le tableau de tournoi EN DIRECT.
+ * C'est la thèse du hero : le produit ouvre sur ce qu'il a de plus
+ * caractéristique, un bracket vivant, pas un visuel de sport générique.
+ *
+ * Données d'exemple éditables dans src/content/pages/accueil.json → hero.bracket.
+ * Le composant ne contient aucune chaîne de contenu en dur.
+ */
+interface Equipe {
+  nom: string;
+  score?: string;
+  gagnant?: boolean;
+}
+interface Match {
+  statut?: 'termine' | 'live' | 'a-venir';
+  equipeA: Equipe;
+  equipeB: Equipe;
+  labelAttente?: string;
+}
+interface Props {
+  data: {
+    titre: string;
+    sousTitre: string;
+    labelLive: string;
+    colonneDemies: string;
+    colonneFinale: string;
+    demies: Match[];
+    finale: Match;
+  };
+  class?: string;
+}
+const { data, class: className = '' } = Astro.props;
+
+function equipeRow(e: Equipe, live = false) {
+  return { e, live };
+}
+---
+
+<div
+  class={`bracket-card relative rounded-xl bg-blanc p-4 sm:p-5 shadow-card ring-1 ring-marine/5 ${className}`}
+  role="img"
+  aria-label={`${data.titre} — exemple de tableau de tournoi de padel en direct`}
+>
+  <!-- En-tête de la carte -->
+  <div class="mb-4 flex items-center justify-between gap-3">
+    <div>
+      <p class="text-sm font-semibold text-marine">{data.titre}</p>
+      <p class="text-xs text-gris-600">{data.sousTitre}</p>
+    </div>
+    <span
+      class="live-badge inline-flex items-center gap-1.5 rounded-full bg-orange/10 px-2.5 py-1 text-[0.7rem] font-semibold uppercase tracking-wide text-orange"
+    >
+      <span class="live-dot h-1.5 w-1.5 rounded-full bg-orange"></span>
+      {data.labelLive}
+    </span>
+  </div>
+
+  <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-1.5 sm:gap-3">
+    <!-- Colonne demi-finales -->
+    <div class="flex flex-col gap-3">
+      <p class="text-[0.65rem] font-semibold uppercase tracking-wide text-gris-600">
+        {data.colonneDemies}
+      </p>
+      {
+        data.demies.map((m) => (
+          <div
+            class:list={[
+              'match rounded-lg border p-2',
+              m.statut === 'live'
+                ? 'border-orange/50 bg-orange/5'
+                : 'border-gris-200 bg-gris',
+            ]}
+          >
+            {[m.equipeA, m.equipeB].map((e) => (
+              <div class="flex items-center justify-between gap-2 py-0.5">
+                <span
+                  class:list={[
+                    'flex items-center gap-1.5 truncate text-[0.72rem] leading-tight',
+                    e.gagnant ? 'font-semibold text-marine' : 'text-gris-600',
+                  ]}
+                >
+                  {m.statut === 'live' && (
+                    <span class="h-1.5 w-1.5 shrink-0 rounded-full bg-vert" aria-hidden="true" />
+                  )}
+                  <span class="truncate">{e.nom}</span>
+                </span>
+                <span
+                  class:list={[
+                    'shrink-0 text-[0.66rem] tabular-nums',
+                    e.gagnant ? 'font-semibold text-marine' : 'text-gris-600',
+                  ]}
+                >
+                  {e.score}
+                </span>
+              </div>
+            ))}
+          </div>
+        ))
+      }
+    </div>
+
+    <!-- Connecteurs (arborescence du bracket) -->
+    <div class="bracket-connect self-stretch" aria-hidden="true">
+      <svg viewBox="0 0 32 120" preserveAspectRatio="none" class="h-full w-6 sm:w-8">
+        <path
+          d="M0 30 H16 V60 M0 90 H16 V60 H32"
+          fill="none"
+          stroke="#E4E9EE"
+          stroke-width="2"
+          vector-effect="non-scaling-stroke"
+        />
+      </svg>
+    </div>
+
+    <!-- Colonne finale -->
+    <div class="flex flex-col gap-3">
+      <p class="text-[0.65rem] font-semibold uppercase tracking-wide text-gris-600">
+        {data.colonneFinale}
+      </p>
+      <div class="match rounded-lg border border-marine/15 bg-marine/[0.03] p-2">
+        {[data.finale.equipeA, data.finale.equipeB].map((e) => (
+          <div class="flex items-center justify-between gap-2 py-0.5">
+            <span class="truncate text-[0.72rem] leading-tight text-gris-600">{e.nom}</span>
+            <span class="shrink-0 text-[0.66rem] tabular-nums text-gris-600">{e.score}</span>
+          </div>
+        ))}
+        {data.finale.labelAttente && (
+          <p class="mt-1 border-t border-gris-200 pt-1 text-[0.62rem] text-gris-600">
+            {data.finale.labelAttente}
+          </p>
+        )}
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  /* Pulsation sobre du point « live » — coupée si mouvement réduit. */
+  .live-dot {
+    animation: live-pulse 1.8s ease-in-out infinite;
+  }
+  @keyframes live-pulse {
+    0%,
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.35;
+      transform: scale(0.7);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .live-dot {
+      animation: none;
+    }
+  }
+</style>

@@ -1,0 +1,100 @@
+---
+import Base from './Base.astro';
+import Section from '../components/Section.astro';
+
+interface Props {
+  titre: string;
+  description: string;
+  miseAJour?: string;
+}
+const { titre, description, miseAJour } = Astro.props;
+---
+
+<Base titre={`${titre} — Padel App`} description={description}>
+  <Section bg="marine" size="compact">
+    <div class="mx-auto max-w-3xl">
+      <h1 class="text-3xl font-bold text-blanc md:text-4xl">{titre}</h1>
+      {miseAJour && <p class="mt-3 text-sm text-blanc/60">Dernière mise à jour : {miseAJour}</p>}
+    </div>
+  </Section>
+
+  <Section bg="blanc">
+    <article class="prose-legal mx-auto max-w-3xl">
+      <slot />
+    </article>
+  </Section>
+</Base>
+
+<style is:global>
+  /* Typographie éditoriale légère pour les pages légales (sans dépendance externe). */
+  .prose-legal {
+    color: var(--c-gris-600);
+    font-size: 1rem;
+    line-height: 1.7;
+  }
+  .prose-legal h2 {
+    color: var(--c-marine);
+    font-size: 1.35rem;
+    font-weight: 700;
+    margin-top: 2.5rem;
+    margin-bottom: 0.75rem;
+  }
+  .prose-legal h2:first-child {
+    margin-top: 0;
+  }
+  .prose-legal h3 {
+    color: var(--c-marine);
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-top: 1.75rem;
+    margin-bottom: 0.5rem;
+  }
+  .prose-legal p {
+    margin-bottom: 1rem;
+  }
+  .prose-legal ul {
+    list-style: disc;
+    padding-left: 1.25rem;
+    margin-bottom: 1rem;
+  }
+  .prose-legal li {
+    margin-bottom: 0.35rem;
+  }
+  .prose-legal a {
+    color: var(--c-orange);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .prose-legal strong {
+    color: var(--c-marine);
+    font-weight: 600;
+  }
+  .prose-legal table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1.5rem;
+    font-size: 0.95rem;
+  }
+  .prose-legal th,
+  .prose-legal td {
+    border: 1px solid var(--c-gris-200);
+    padding: 0.6rem 0.8rem;
+    text-align: left;
+    vertical-align: top;
+  }
+  .prose-legal th {
+    background: var(--c-gris);
+    color: var(--c-marine);
+    font-weight: 600;
+  }
+  .prose-legal table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+  @media (min-width: 640px) {
+    .prose-legal table {
+      white-space: normal;
+    }
+  }
+</style>

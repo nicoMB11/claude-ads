@@ -1,0 +1,36 @@
+---
+/**
+ * Emplacement photo à compléter. Rendu comme un cadre marqué [À COMPLÉTER] tant
+ * qu'aucune vraie image n'est fournie. Si `src` pointe vers un fichier existant
+ * dans /public/images, remplacez ce composant par une balise <img> classique
+ * (voir README « Remplacer une image »).
+ *
+ * Props :
+ *   label : texte indiquant quelle photo placer ici
+ *   ratio : 'portrait' | 'paysage' | 'carre'
+ */
+interface Props {
+  label: string;
+  ratio?: 'portrait' | 'paysage' | 'carre';
+  class?: string;
+}
+const { label, ratio = 'paysage', class: className = '' } = Astro.props;
+const ratioCls: Record<string, string> = {
+  portrait: 'aspect-[3/4]',
+  paysage: 'aspect-[4/3]',
+  carre: 'aspect-square',
+};
+---
+
+<div
+  class={`flex ${ratioCls[ratio]} w-full items-center justify-center rounded-xl border-2 border-dashed border-gris-200 bg-gris p-6 text-center ${className}`}
+>
+  <div class="max-w-[240px]">
+    <svg viewBox="0 0 24 24" class="mx-auto mb-3 h-8 w-8 text-gris-400" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <circle cx="8.5" cy="9.5" r="1.5" />
+      <path d="M21 16l-5-5L5 20" stroke-linecap="round" stroke-linejoin="round" />
+    </svg>
+    <p class="text-xs font-semibold text-gris-600">{label}</p>
+  </div>
+</div>

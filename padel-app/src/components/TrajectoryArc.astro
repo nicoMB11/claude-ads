@@ -1,0 +1,47 @@
+---
+/**
+ * Signature « arc de trajectoire » — la courbe de la balle en mouvement (charte,
+ * univers graphique). Utilisée AVEC PARCIMONIE : une seule fois, en fil
+ * conducteur sous le hero. Ne pas répéter sur chaque section.
+ *
+ * Props :
+ *   pin   : affiche le repère orange au bout de l'arc (défaut true)
+ *   tone  : 'clair' (arc marine sur fond clair) | 'sombre' (arc clair sur marine)
+ */
+interface Props {
+  pin?: boolean;
+  tone?: 'clair' | 'sombre';
+  class?: string;
+}
+const { pin = true, tone = 'clair', class: className = '' } = Astro.props;
+const stroke = tone === 'sombre' ? '#9ED900' : '#061B3A';
+---
+
+<div class={`pointer-events-none select-none ${className}`} aria-hidden="true">
+  <svg
+    viewBox="0 0 1200 120"
+    preserveAspectRatio="none"
+    class="h-full w-full"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M0 96 C 260 30 520 24 760 54 C 940 76 1080 70 1180 34"
+      fill="none"
+      stroke={stroke}
+      stroke-width="2.5"
+      stroke-linecap="round"
+      opacity="0.55"
+    />
+    {
+      pin && (
+        <g transform="translate(1176 20)">
+          <path
+            d="M4 0 c -6 0 -10.5 4.6 -10.5 10.4 c 0 7 10.5 16.6 10.5 16.6 c 0 0 10.5 -9.6 10.5 -16.6 C 14.5 4.6 10 0 4 0 Z"
+            fill="#FF6500"
+          />
+          <circle cx="4" cy="10.4" r="3.4" fill="#FFFFFF" />
+        </g>
+      )
+    }
+  </svg>
+</div>

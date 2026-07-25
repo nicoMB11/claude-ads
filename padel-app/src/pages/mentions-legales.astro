@@ -1,0 +1,15 @@
+---
+import { getEntry } from 'astro:content';
+import LegalLayout from '../layouts/LegalLayout.astro';
+
+const entry = (await getEntry('legal', 'mentions-legales'))!;
+const { Content } = await entry.render();
+---
+
+<LegalLayout
+  titre={entry.data.titre}
+  description={entry.data.description}
+  miseAJour={entry.data.miseAJour}
+>
+  <Content />
+</LegalLayout>

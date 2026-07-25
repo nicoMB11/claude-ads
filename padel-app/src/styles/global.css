@@ -1,0 +1,145 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   POLICES AUTO-HÉBERGÉES — Poppins (charte, page 06)
+   Aucune requête vers Google Fonts. Fichiers dans /public/fonts.
+   ============================================================ */
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/poppins-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/poppins-600.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/poppins-700.woff2') format('woff2');
+}
+
+/* ============================================================
+   TOKENS — miroir CSS des variables de la charte
+   (utile hors Tailwind : SVG, dégradés d'ombre, etc.)
+   ============================================================ */
+:root {
+  --c-marine: #061b3a;
+  --c-orange: #ff6500;
+  --c-vert: #9ed900;
+  --c-blanc: #ffffff;
+  --c-gris: #f4f6f8;
+  --c-gris-200: #e4e9ee;
+  --c-gris-600: #5a6b7b;
+
+  --header-h: 4.5rem;
+}
+
+/* ============================================================
+   BASE
+   ============================================================ */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: var(--header-h);
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--c-blanc);
+    color: var(--c-marine);
+    font-family: 'Poppins', Arial, system-ui, sans-serif;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1, h2, h3, h4 {
+    font-weight: 700;
+    line-height: 1.1;
+    text-wrap: balance;
+  }
+
+  /* Focus clavier visible et cohérent (accessibilité AA). */
+  :focus-visible {
+    outline: 3px solid var(--c-orange);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Lien d'évitement */
+  .skip-link {
+    position: absolute;
+    left: 1rem;
+    top: -100px;
+    z-index: 100;
+    background: var(--c-marine);
+    color: var(--c-blanc);
+    padding: 0.75rem 1.25rem;
+    border-radius: 10px;
+    transition: top 0.2s ease;
+  }
+  .skip-link:focus {
+    top: 1rem;
+  }
+}
+
+/* ============================================================
+   COMPOSANTS UTILITAIRES
+   ============================================================ */
+@layer components {
+  .container-x {
+    width: 100%;
+    max-width: 1200px;
+    margin-inline: auto;
+    padding-inline: 1.25rem;
+  }
+  @media (min-width: 768px) {
+    .container-x {
+      padding-inline: 2rem;
+    }
+  }
+
+  /* Révélation au scroll — sobre, désactivée si prefers-reduced-motion */
+  .reveal {
+    opacity: 0;
+    transform: translateY(16px);
+    transition:
+      opacity 0.6s var(--tw-ease, cubic-bezier(0.16, 1, 0.3, 1)),
+      transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: opacity, transform;
+  }
+  .reveal.is-visible {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ============================================================
+   MOUVEMENT RÉDUIT — respect strict de la préférence système
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .reveal {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}

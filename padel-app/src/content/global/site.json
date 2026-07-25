@@ -1,0 +1,46 @@
+{
+  "nom": "Padel App",
+  "domaine": "padelapp.fr",
+  "baseline": "Trouvez. Inscrivez-vous. Jouez.",
+  "nav": [
+    { "libelle": "Accueil", "href": "/" },
+    { "libelle": "Joueurs", "href": "/joueurs" },
+    { "libelle": "Clubs & juges-arbitres", "href": "/clubs" },
+    { "libelle": "À propos", "href": "/a-propos" }
+  ],
+  "navCta": { "libelle": "Demander une démo", "href": "/clubs#demo", "style": "principal" },
+  "bandeauPilote": "Actuellement en test en club pilote · Déploiement à la rentrée",
+  "footer": {
+    "tagline": "Padel App prend le relais là où les outils fédéraux s'arrêtent : tableaux, planning, convocations et scores en direct.",
+    "colonnes": [
+      {
+        "titre": "Le produit",
+        "liens": [
+          { "libelle": "Pour les joueurs", "href": "/joueurs" },
+          { "libelle": "Pour les clubs", "href": "/clubs" },
+          { "libelle": "Pour les juges-arbitres", "href": "/clubs#juges" }
+        ]
+      },
+      {
+        "titre": "La marque",
+        "liens": [
+          { "libelle": "À propos", "href": "/a-propos" },
+          { "libelle": "Demander une démo", "href": "/clubs#demo" }
+        ]
+      },
+      {
+        "titre": "Informations",
+        "liens": [
+          { "libelle": "Mentions légales", "href": "/mentions-legales" },
+          { "libelle": "Confidentialité", "href": "/confidentialite" }
+        ]
+      }
+    ],
+    "legal": [
+      { "libelle": "Mentions légales", "href": "/mentions-legales" },
+      { "libelle": "Confidentialité", "href": "/confidentialite" }
+    ],
+    "copyright": "© 2026 Padel App. Tous droits réservés.",
+    "mentionSepare": "Padel App ne remplace pas les outils officiels de la fédération. L'homologation, les licences et le classement restent gérés par la FFT."
+  }
+}

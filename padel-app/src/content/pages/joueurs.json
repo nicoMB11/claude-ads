@@ -1,0 +1,71 @@
+{
+  "meta": {
+    "titre": "Padel App pour les joueurs — Suivez vos tournois en direct",
+    "description": "Votre tableau, votre horaire et votre terrain en direct dans votre poche. Et tout l'historique de vos tournois de padel, match après match. L'application joueur est gratuite.",
+    "ogImage": "/og/joueurs.png"
+  },
+
+  "hero": {
+    "titre": "Savoir enfin quand vous jouez.",
+    "sousTitre": "Votre tableau, votre horaire et votre terrain en direct dans votre poche. Et tout l'historique de vos tournois, match après match.",
+    "boutons": [
+      { "libelle": "Créer mon compte", "href": "#creer-compte", "style": "principal" }
+    ]
+  },
+
+  "blocs": [
+    {
+      "surtitre": "En direct",
+      "titre": "Votre tournoi en direct",
+      "texte": "Le tableau se met à jour à chaque point marqué. Vous savez qui vous affrontez, quand, et sur quel terrain. Plus besoin de traverser le club pour lire une feuille au mur.",
+      "image": "/images/joueur-direct.webp",
+      "imageAlt": "Écran de l'application affichant le tableau du tournoi en direct",
+      "miseEnAvant": false,
+      "visuel": "bracket"
+    },
+    {
+      "surtitre": "Votre bilan",
+      "titre": "Votre historique, enfin gardé quelque part",
+      "texte": "Chaque match, chaque score, chaque partenaire. Votre bilan victoires-défaites, vos adversaires récurrents, votre progression. C'est ce que le joueur ne trouve nulle part ailleurs.",
+      "image": "/images/joueur-historique.webp",
+      "imageAlt": "Écran de l'application affichant l'historique et le bilan des matchs du joueur",
+      "miseEnAvant": true,
+      "badge": "Le cœur de l'app joueur",
+      "visuel": "historique"
+    },
+    {
+      "surtitre": "Autour de vous",
+      "titre": "Les tournois autour de vous",
+      "texte": "Découvrez les tournois des clubs qui utilisent Padel App et demandez votre place directement, sans avoir à installer l'application de chaque club.",
+      "image": "/images/joueur-carte.webp",
+      "imageAlt": "Carte affichant les tournois de padel à proximité",
+      "miseEnAvant": false,
+      "visuel": "carte"
+    },
+    {
+      "surtitre": "Gratuit",
+      "titre": "Gratuit, sans conditions",
+      "texte": "L'application joueur est gratuite et le restera.",
+      "image": "/images/joueur-gratuit.webp",
+      "imageAlt": "Illustration de l'application joueur gratuite",
+      "miseEnAvant": false,
+      "visuel": "gratuit"
+    }
+  ],
+
+  "honnetete": {
+    "titre": "On est en train de démarrer.",
+    "texte": "Padel App se déploie club par club. Selon votre région, vous ne verrez peut-être encore que quelques tournois. Créez votre compte, on vous prévient dès qu'un club près de chez vous nous rejoint."
+  },
+
+  "creerCompte": {
+    "titre": "Créer mon compte joueur",
+    "texte": "L'application arrive sur mobile. Laissez-nous votre e-mail et vous serez prévenu dès l'ouverture des inscriptions dans votre région.",
+    "note": "[À COMPLÉTER — lien vers les stores App Store / Google Play une fois l'application publiée, ou brancher ce champ sur le même endpoint que le formulaire de démo.]",
+    "champLabel": "Votre adresse e-mail",
+    "champPlaceholder": "prenom@email.fr",
+    "bouton": "Me prévenir",
+    "messageSucces": "Merci ! On vous écrit dès qu'un club proche de chez vous rejoint Padel App.",
+    "messageErreur": "Une erreur est survenue. Réessayez ou écrivez-nous directement."
+  }
+}

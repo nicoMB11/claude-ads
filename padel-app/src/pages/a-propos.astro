@@ -1,0 +1,68 @@
+---
+import { getEntry } from 'astro:content';
+import Base from '../layouts/Base.astro';
+import Section from '../components/Section.astro';
+import SectionHeader from '../components/SectionHeader.astro';
+import Button from '../components/Button.astro';
+import PlaceholderPhoto from '../components/PlaceholderPhoto.astro';
+
+const { meta, hero, recit, equipe, cta } = (await getEntry('pages', 'a-propos'))!.data as any;
+---
+
+<Base titre={meta.titre} description={meta.description} ogImage={meta.ogImage}>
+  <!-- HERO -->
+  <Section bg="marine" size="compact">
+    <div class="reveal mx-auto max-w-3xl text-center">
+      <h1 class="text-3xl font-bold text-blanc md:text-4xl">{hero.titre}</h1>
+      <p class="mt-6 text-base leading-relaxed text-blanc/75 md:text-lg">{hero.sousTitre}</p>
+    </div>
+  </Section>
+
+  <!-- RÉCIT EN TROIS TEMPS -->
+  {recit.map((temps: any, i: number) => (
+    <Section bg={i % 2 === 0 ? 'blanc' : 'gris'}>
+      <div
+        class:list={[
+          'reveal grid items-center gap-10 lg:grid-cols-2',
+          i % 2 === 1 ? 'lg:[&>*:first-child]:order-2' : '',
+        ]}
+      >
+        <div>
+          <p class="text-sm font-semibold uppercase tracking-wide text-orange">{temps.surtitre}</p>
+          <h2 class="mt-2 text-2xl font-bold text-marine md:text-3xl">{temps.titre}</h2>
+          <p class="mt-4 max-w-xl text-base leading-relaxed text-gris-600">{temps.texte}</p>
+        </div>
+        <div>
+          <PlaceholderPhoto label={temps.imageAlt} ratio="paysage" />
+        </div>
+      </div>
+    </Section>
+  ))}
+
+  <!-- ÉQUIPE -->
+  <Section bg="blanc">
+    <SectionHeader surtitre={equipe.surtitre} titre={equipe.titre} align="center" class="reveal" />
+    <div class="mx-auto mt-12 grid max-w-3xl gap-8 sm:grid-cols-2">
+      {equipe.membres.map((m: any) => (
+        <div class="reveal flex flex-col items-center text-center">
+          <PlaceholderPhoto label={m.photoAlt} ratio="carre" class="max-w-[220px]" />
+          <p class="mt-4 text-base font-semibold text-marine">{m.nom}</p>
+          <p class="text-sm text-gris-600">{m.role}</p>
+        </div>
+      ))}
+    </div>
+  </Section>
+
+  <!-- CTA -->
+  <Section bg="marine" size="compact">
+    <div class="reveal mx-auto max-w-2xl text-center">
+      <h2 class="text-2xl font-bold text-blanc md:text-3xl">{cta.titre}</h2>
+      <p class="mt-4 text-base leading-relaxed text-blanc/75">{cta.texte}</p>
+      <div class="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+        {cta.boutons.map((b: any) => (
+          <Button href={b.href} style={b.style}>{b.libelle}</Button>
+        ))}
+      </div>
+    </div>
+  </Section>
+</Base>
